@@ -5,7 +5,7 @@ local updater = require("libs.updater")
 local bd = require("libs.box_drawing")
 
 -- Version of the box drawing library
-local version = "0.0.2"
+local version = "0.0.3"
 
 -- self update function
 local function update()
@@ -48,6 +48,7 @@ local function termSelect(options, prompt, title, subtitle)
 end
 
 return {
+    version = version,
     update = update,
-    version = version
+    termSelect = termSelect
 }
