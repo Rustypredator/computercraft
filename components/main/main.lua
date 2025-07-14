@@ -1,16 +1,21 @@
 -- VaultGuard Main Server Script
 
 -- imports
-local bd = require("libs.box_drawing")
 local updater = require("libs.updater")
+local bd = require("libs.box_drawing")
+local menu = require("libs.menu")
 
-local version = "0.0.3"
+local version = "0.0.4"
 
 -- Self Update function
 local function updateSelf()
     local updateUrl = "/components/main/main.lua"
     local versionUrl = "/components/main/version"
-    updater.selfUpdate() -- update the updater library first if needed
+    -- update libraries
+    updater.selfUpdate()
+    bd.update()
+    menu.update()
+    -- update this script
     return updater.update(version, updateUrl, versionUrl, "startup.lua")
 end
 
@@ -55,7 +60,12 @@ local function main()
 
     --- Main
     term.clear()
-    bd.outerRim("VaultGuard Main Server", "Version: " .. version)
+    local option = menu.termSelect({
+        "Start Server",
+        "Settings",
+        "Exit"
+    }, "Select an option", "VaultGuard Main Menu", "v" .. version)
+    print("You selected option: " .. option)
 end
 
 -- Run the main function
