@@ -11,13 +11,13 @@ local url = ""
 
 if choice == "1" then
     print("Installing VaultGuard Main Server...")
-    url = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main/main.lua"
+    url = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main/components/main/main.lua"
 elseif choice == "2" then
     print("Installing VaultGuard Door...")
-    url = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main/door.lua"
+    url = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main/components/door/door.lua"
 elseif choice == "3" then
     print("Installing VaultGuard Terminal...")
-    url = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main/terminal.lua"
+    url = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main/components/term/term.lua"
 else
     print("Invalid choice. Please run the setup script again.")
 end
