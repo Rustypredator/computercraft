@@ -1,6 +1,6 @@
 -- VaultGuard Main Server Script
 
-local version = "0.0.1"
+local version = "0.0.2"
 
 -- Self Update function
 -- This function checks for updates to the main server script and updates it if a new version is available.
@@ -70,3 +70,6 @@ local function main()
     -- Main server logic goes here
     -- For example, starting the server, handling requests, etc.
 end
+
+-- Run the main function
+main()
