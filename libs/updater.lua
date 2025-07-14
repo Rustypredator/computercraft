@@ -1,6 +1,6 @@
 
 local baseUrl = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main"
-local version = "0.0.2"
+local version = "0.0.3"
 
 -- Update function to check for updates and download the latest version
 -- @param currentVersion The current version of the script
@@ -39,6 +39,20 @@ local function update(currentVersion, url, versionUrl, filePath)
     end
 end
 
+local function updateLib(libName)
+    local url = "/libs/" .. libName .. ".lua"
+    local versionUrl = "/libs/" .. libName .. ".ver"
+    local version = "0.0.0"
+    if fs.exists("libs/" .. libName .. ".lua") then
+        local lib = require("libs." .. libName)
+        if lib and lib.version then
+            version = lib.version  -- Get the version from the library if it exists
+        end
+    end
+    
+    return update(version, url, versionUrl, "libs/" .. libName .. ".lua")
+end
+
 local function selfUpdate()
     local url = "/libs/updater.lua"
     local versionUrl = "/libs/updater.ver"
@@ -47,7 +61,8 @@ local function selfUpdate()
 end
 
 return {
-    update = update,
-    selfUpdate = selfUpdate,
     version = version
+    update = update,
+    updateLib = updateLib,
+    selfUpdate = selfUpdate,
 }
