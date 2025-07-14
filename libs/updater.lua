@@ -1,6 +1,6 @@
 
 local baseUrl = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main"
-local version = "0.1"
+local version = "0.0.1"
 
 -- Update function to check for updates and download the latest version
 -- @param currentVersion The current version of the script
@@ -11,6 +11,7 @@ local version = "0.1"
 local function update(currentVersion, url, versionUrl, filePath)
     local response = http.get(versionUrl)
     if not response then
+        print("Error: Could not fetch the latest version from " .. versionUrl)
         return -1
     end
     
@@ -20,6 +21,7 @@ local function update(currentVersion, url, versionUrl, filePath)
     if latestVersion ~= currentVersion then
         local updateResponse = http.get(url)
         if not updateResponse then
+            print("Error: Could not download the update from " .. url)
             return -1
         end
         
