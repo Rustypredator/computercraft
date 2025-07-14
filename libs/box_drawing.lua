@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the box drawing library
-local version = "0.0"
+local version = "0.1"
 
 -- Box drawing characters
 local topLeftCorner = "┌"
@@ -50,3 +50,9 @@ local function outerRim(title, subtitle)
         term.write(subtitle)
     end
 end
+
+return {
+    update = update,
+    outerRim = outerRim,
+    version = version
+}
