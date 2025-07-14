@@ -1,6 +1,6 @@
 
 local baseUrl = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main"
-local version = "0.0.3"
+local version = "0.0.4"
 
 -- Update function to check for updates and download the latest version
 -- @param currentVersion The current version of the script
@@ -61,8 +61,8 @@ local function selfUpdate()
 end
 
 return {
-    version = version
+    version = version,
     update = update,
     updateLib = updateLib,
-    selfUpdate = selfUpdate,
+    selfUpdate = selfUpdate
 }
