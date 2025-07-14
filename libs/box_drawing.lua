@@ -4,15 +4,15 @@
 local updater = require("libs.updater")
 
 -- Version of the box drawing library
-local version = "0.1"
+local version = "0.0.1"
 
 -- Box drawing characters
-local topLeftCorner = "┌"
-local topRightCorner = "┐"
-local bottomLeftCorner = "└"
-local bottomRightCorner = "┘"
-local horizontalLine = "─"
-local verticalLine = "│"
+local topLeftCorner = "+"
+local topRightCorner = "+"
+local bottomLeftCorner = "+"
+local bottomRightCorner = "+"
+local horizontalLine = "-"
+local verticalLine = "|"
 
 -- self update function
 local function update()
