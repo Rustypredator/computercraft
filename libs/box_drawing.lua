@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the box drawing library
-local version = "0.0.1"
+local version = "0.0.2"
 
 -- Box drawing characters
 local topLeftCorner = "+"
@@ -45,7 +45,7 @@ local function outerRim(title, subtitle)
     end
 
     if subtitle then
-        local subPos = width - #subtitle
+        local subPos = width - (#subtitle + 2) -- leave 2 spaces in bottom right corner to avoid overlap with the corner
         term.setCursorPos(subPos, height)
         term.write(subtitle)
     end
