@@ -6,8 +6,8 @@ local version = "0.0.2"
 -- This function checks for updates to the main server script and updates it if a new version is available.
 -- @return int 0 if the update was successful, 1 if no update was needed, or -1 if there was an error.
 local function updateSelf()
-    local selfUpdateUrl = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main/main.lua"
-    local selfVersionUrl = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main/main.ver"
+    local selfUpdateUrl = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main/components/main/main.lua"
+    local selfVersionUrl = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main/components/main/version"
     local response = http.get(selfVersionUrl)
     if response then
         local latestVersion = response.readAll()
