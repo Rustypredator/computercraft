@@ -5,7 +5,7 @@ local updater = require("libs.updater")
 local bd = require("libs.box_drawing")
 
 -- Version of the box drawing library
-local version = "0.0.3"
+local version = "0.0.4"
 
 -- self update function
 local function update()
@@ -30,7 +30,7 @@ local function termSelect(options, prompt, title, subtitle)
     local startY = 4
     for i, option in ipairs(options) do
         term.setCursorPos(3, startY + i - 1)
-        term.write(i .. "-> " .. option)
+        term.write("-> " .. option)
     end
     -- wait for user input
     local selectedOption = nil
