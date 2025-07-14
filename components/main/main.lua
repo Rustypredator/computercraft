@@ -16,6 +16,7 @@ end
 
 local function init()
     term.clear()
+    term.setCursorPos(1, 1)
     print("VaultGuard Main Server Script " .. version)
     -- do some checks:
     if not http then
