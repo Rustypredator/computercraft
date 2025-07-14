@@ -2,31 +2,6 @@
 
 local baseurl = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main"
 
-local function downloadLibraries()
-    local libraries = {
-        {
-            name = "box_drawing",
-            url = baseurl .. "/libs/box_drawing.lua"
-        },
-        {
-            name = "updater",
-            url = baseurl .. "/libs/updater.lua"
-        }
-    }
-
-    for _, lib in ipairs(libraries) do
-        local response = http.get(lib.url)
-        if response then
-            local file = fs.open("libs/" .. lib.name .. ".lua", "w")
-            file.write(response.readAll())
-            file.close()
-            print("Downloaded " .. lib.name .. " library successfully.")
-        else
-            print("Failed to download " .. lib.name .. " library. Please check your internet connection.")
-        end
-    end
-end
-
 print("VaultGuard Setup Script")
 print("Select what component you are installing:")
 print("1. VaultGuard Main Server")
@@ -57,7 +32,17 @@ if response then
     file.close()
     print("Script downloaded successfully.")
     print("Downloading required libraries...")
-    downloadLibraries()
+    -- download updater library
+    local updaterUrl = baseurl .. "/libs/updater.lua"
+    local updaterResponse = http.get(updaterUrl)
+    if updaterResponse then
+        local updaterFile = fs.open("libs/updater.lua", "w")
+        updaterFile.write(updaterResponse.readAll())
+        updaterFile.close()
+        print("Updater library downloaded successfully.")
+    else
+        print("Failed to download the updater library. Please check your internet connection.")
+    end
 else
     print("Failed to download the script. Please check your internet connection.")
 end
