@@ -1,10 +1,10 @@
--- Vault Guard 0.1
+-- Vault Guard
 
 -- prevent terminating the script:
---os.pullEvent = os.pullEventRaw
+os.pullEvent = os.pullEventRaw
 
 -- initialize variables
-local vaultGuardVersion = "0.1"
+local version = "0.1"
 local monitor = peripheral.find("monitor")
 local sgs = peripheral.find("Create_SequencedGearshift")
 local terminal = peripheral.find("computer")
@@ -23,6 +23,39 @@ end
 if not terminal then
     print("No computer found.")
     return
+end
+
+function selfUpdate()
+    -- urls
+    local baseUrl = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main"
+    local url = baseUrl .. "/old/main.lua"
+    local versionUrl = baseUrl .. "/old/main.ver"
+    -- get the latest version from the version URL
+    local response = http.get(versionUrl)
+    if not response then
+        print("Error: Could not fetch the latest version from " .. versionUrl)
+        return -1
+    end
+    local latestVersion = response.readAll()
+    response.close()
+    -- compare the latest version with the current version
+    if latestVersion ~= version then
+        local updateResponse = http.get(url)
+        if not updateResponse then
+            print("Error: Could not download the update from " .. url)
+            return -1
+        end
+        
+        local file = fs.open("startup.lua", "w")
+        file.write(updateResponse.readAll())
+        file.close()
+        
+        print("Update successful to version " .. latestVersion)
+        return 0
+    else
+        print("No update needed, already on the latest version: " .. version)
+        return 1
+    end
 end
 
 function LoadPassword()
@@ -131,7 +164,7 @@ function Initialize()
     monitor.setTextScale(0.5)
     monitor.clear()
     monitor.setCursorPos(1, 1)
-    monitor.write("Vault Guard " .. vaultGuardVersion)
+    monitor.write("Vault Guard " .. version)
     monitor.setCursorPos(1, 2)
     monitor.write("-> Initializing...")
     
@@ -175,7 +208,7 @@ function MonitorPrintLocking()
     -- clear the monitor and print the locking message
     monitor.clear()
     monitor.setCursorPos(1, 1)
-    monitor.write("Vault Guard " .. vaultGuardVersion)
+    monitor.write("Vault Guard " .. version)
     monitor.setCursorPos(1, 2)
     monitor.write("-> Locking vault.")
 end
@@ -184,7 +217,7 @@ function MonitorPrintUnlocking()
     -- clear the monitor and print the unlocking message
     monitor.clear()
     monitor.setCursorPos(1, 1)
-    monitor.write("Vault Guard " .. vaultGuardVersion)
+    monitor.write("Vault Guard " .. version)
     monitor.setCursorPos(1, 2)
     monitor.write("-> Unlocking vault.")
 end
@@ -193,7 +226,7 @@ function MonitorPrintPasswordUpdate()
     -- clear the monitor and print the password update message
     monitor.clear()
     monitor.setCursorPos(1, 1)
-    monitor.write("Vault Guard " .. vaultGuardVersion)
+    monitor.write("Vault Guard " .. version)
     monitor.setCursorPos(1, 2)
     monitor.write("-> Updating password.")
     monitor.setCursorPos(1, 3)
@@ -208,7 +241,7 @@ function MonitorPrintMainMenu()
     -- monitor dimensions: 36x24
     monitor.clear()
     monitor.setCursorPos(1, 1)
-    monitor.write("========== " .. "Vault Guard " .. vaultGuardVersion .. " ==========")
+    monitor.write("========== " .. "Vault Guard " .. version .. " ==========")
     monitor.setCursorPos(1, 3)
     -- status with according text:
     if IsLocked() then
@@ -240,6 +273,7 @@ function HostRednet()
     rednet.host("vaultGuard", "main_computer")
 end
 
+selfUpdate()
 Initialize()
 HostRednet() -- host the rednet service for terminals to connect to
 
@@ -306,7 +340,7 @@ while true do
                         -- user clicked the exit button
                         monitor.clear()
                         monitor.setCursorPos(1, 1)
-                        monitor.write("Vault Guard " .. vaultGuardVersion)
+                        monitor.write("Vault Guard " .. version)
                         monitor.setCursorPos(1, 3)
                         monitor.write("-> Exiting...")
                         

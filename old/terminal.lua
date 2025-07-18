@@ -4,7 +4,7 @@
 os.pullEvent = os.pullEventRaw
 
 -- initialize variables
-local vaultGuardVersion = "0.1"
+local version = "0.1"
 local mainComputer = peripheral.find("computer")
 local term_w, term_h = term.getSize()
 local connected = false
@@ -22,6 +22,39 @@ os.setComputerLabel("Vault Guard Terminal")
 
 -- Open rednet at initialization
 rednet.open("bottom") -- modem is on bottom
+
+function selfUpdate()
+    -- urls
+    local baseUrl = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main"
+    local url = baseUrl .. "/old/terminal.lua"
+    local versionUrl = baseUrl .. "/old/terminal.ver"
+    -- get the latest version from the version URL
+    local response = http.get(versionUrl)
+    if not response then
+        print("Error: Could not fetch the latest version from " .. versionUrl)
+        return -1
+    end
+    local latestVersion = response.readAll()
+    response.close()
+    -- compare the latest version with the current version
+    if latestVersion ~= version then
+        local updateResponse = http.get(url)
+        if not updateResponse then
+            print("Error: Could not download the update from " .. url)
+            return -1
+        end
+        
+        local file = fs.open("startup.lua", "w")
+        file.write(updateResponse.readAll())
+        file.close()
+        
+        print("Update successful to version " .. latestVersion)
+        return 0
+    else
+        print("No update needed, already on the latest version: " .. version)
+        return 1
+    end
+end
 
 function connectToMainComputer()
     -- Look for main computer
@@ -42,7 +75,7 @@ end
 function displayUI()
     term.clear()
     term.setCursorPos(1, 1)
-    term.write("========== Vault Guard Terminal " .. vaultGuardVersion .. " ==========")
+    term.write("========== Vault Guard Terminal " .. version .. " ==========")
 
     term.setCursorPos(1, 3)
     if connected then
@@ -144,6 +177,8 @@ function lockVault()
         end
     end
 end
+
+selfUpdate()
 
 -- Check that main computer is online, turn it on if not
 if not mainComputer.isOn() then
