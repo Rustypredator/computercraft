@@ -1,4 +1,4 @@
--- VaultGuard Main Server Script
+-- VaultGuard Terminal Server Script
 
 -- updater
 local updater = require("libs.updater")
@@ -9,12 +9,12 @@ updater.updateLib("menu")
 local bd = require("libs.box_drawing")
 local menu = require("libs.menu")
 
-local version = "0.0.5"
+local version = "0.0.1"
 
 -- Self Update function
 local function updateSelf()
-    local updateUrl = "/components/main/main.lua"
-    local versionUrl = "/components/main/version"
+    local updateUrl = "/components/term/main.lua"
+    local versionUrl = "/components/term/version"
     -- update this script
     return updater.update(version, updateUrl, versionUrl, "startup.lua")
 end
@@ -22,7 +22,7 @@ end
 local function init()
     term.clear()
     term.setCursorPos(1, 1)
-    print("VaultGuard Main Server Script " .. version)
+    print("VaultGuard Terminal Server Script " .. version)
     -- do some checks:
     if not http then
         print("Error: HTTP API is not enabled.")
