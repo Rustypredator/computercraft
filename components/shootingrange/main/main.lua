@@ -12,7 +12,7 @@ updater.updateLib("menu")
 local bd = require("libs.box_drawing")
 local menu = require("libs.menu")
 
-local version = "0.0.7"
+local version = "0.0.8"
 
 -- Self Update function
 local function updateSelf()
@@ -70,7 +70,7 @@ local function listeningLoop()
         local event, side, channel, returnChannel, message = os.pullEvent()
         if event == "modem_message" and channel == 9832 then
             print("Received message: " .. textutils.serialize(message))
-            if type(message) == "table" and message.type == "hit" then
+            if type(message) == "table" and message.type == "target" then
                 table.insert(hits, message.data)
                 print("Hit recorded: " .. textutils.serialize(message.data))
             else
