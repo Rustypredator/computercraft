@@ -12,7 +12,7 @@ updater.updateLib("menu")
 local bd = require("libs.box_drawing")
 local menu = require("libs.menu")
 
-local version = "0.0.2"
+local version = "0.0.3"
 
 -- Self Update function
 local function updateSelf()
@@ -55,6 +55,35 @@ local function init()
     return true
 end
 
+local function listeningLoop()
+    local timeout = os.startTimer(10) -- record all hits for 10 seconds^
+    local modem = peripheral.find("modem")
+    local hits = {}
+    if modem then
+        modem.open(9832) -- Open the modem on channel 9832
+        print("Modem opened on channel 9832. Listening for messages...")
+    else
+        print("Error: No modem found.")
+        return
+    end
+    while true do
+        local event, param1, param2, param3 = os.pullEvent()
+        if event == "modem_message" and param1 == 9832 then
+            print("Received message: " .. textutils.serialize(param3))
+            if type(param3) == "table" and param3.type == "hit" then
+                table.insert(hits, param3.data)
+                print("Hit recorded: " .. textutils.serialize(param3.data))
+            else
+                print("Unknown message type or format.")
+            end
+        elseif event == "timer" and param1 == timeout then
+            print("Timeout reached. Stopping listening loop.")
+            return hits
+            break
+        end
+    end
+end
+
 local function main()
     if not init() then
         print("Initialization failed. Exiting...")
@@ -65,30 +94,22 @@ local function main()
 
     --- Main
     term.clear()
-    while true do
-        -- open modem on target channel and listen for messages
-        print("Opening modem on channel " .. CHANNEL)
-        local modem = peripheral.find("modem")
-        if modem then
-            modem.open(CHANNEL)
-            print("Modem opened successfully.")
-        else
-            print("Error: No modem found.")
-            return
-        end
-        print("Listening for messages on channel " .. CHANNEL)
-        local event, channel, message = os.pullEvent("modem_message")
-        if channel == CHANNEL then
-            print("Received message on channel " .. channel)
-            if type(message) == "table" and message.type == "target" then
-                print("Target message received: " .. message.data)
-                -- Here you can handle the target message, e.g., update the target position
-                -- For now, just print it
-                print("Target data: " .. textutils.serialize(message.data))
-            else
-                print("Unknown message type or format.")
+    local option = menu.termSelect({
+        "Start Round",
+    }, "Select an option", "Shooting Range", "v" .. version)
+    if option == "Start Round" then
+        print("Recording all hits for 10 seconds...")
+        hits = listeningLoop()
+        if #hits > 0 then
+            print("Hits recorded: " .. #hits)
+            for i, hit in ipairs(hits) do
+                print("Hit " .. i .. ": " .. textutils.serialize(hit))
             end
+        else
+            print("No hits recorded.")
         end
+    else
+        print("You selected an invalid option.")
     end
 end
 
