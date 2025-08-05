@@ -12,7 +12,7 @@ updater.updateLib("menu")
 local bd = require("libs.box_drawing")
 local menu = require("libs.menu")
 
-local version = "0.0.8"
+local version = "0.0.9"
 
 -- Self Update function
 local function updateSelf()
@@ -56,7 +56,7 @@ local function init()
 end
 
 local function listeningLoop()
-    local timeout = os.startTimer(10) -- record all hits for 10 seconds^
+    local timeout = os.startTimer(10) -- record all hits for 10 seconds
     local modem = peripheral.find("modem")
     local hits = {}
     if modem then
@@ -67,8 +67,12 @@ local function listeningLoop()
         return {}
     end
     while true do
-        local event, side, channel, returnChannel, message = os.pullEvent()
-        if event == "modem_message" and channel == 9832 then
+        local event, param1, param2, param3, param4 = os.pullEvent()
+        if event == "modem_message" and param2 == 9832 then
+            local side = param1
+            local channel = param2
+            local returnChannel = param3
+            local message = param4
             print("Received message: " .. textutils.serialize(message))
             if type(message) == "table" and message.type == "target" then
                 table.insert(hits, message.data)
