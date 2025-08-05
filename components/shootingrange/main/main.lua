@@ -12,7 +12,7 @@ updater.updateLib("menu")
 local bd = require("libs.box_drawing")
 local menu = require("libs.menu")
 
-local version = "0.0.9"
+local version = "0.1.0"
 
 -- Self Update function
 local function updateSelf()
@@ -110,41 +110,43 @@ local function main()
     end
 
     --- Main
-    term.clear()
-    local option = menu.monitorSelect({
-        "Start Round",
-    }, "Select an option", "Shooting Range", "v" .. version)
-    if option == 1 then
-        print("Recording all hits for 10 seconds...")
-        if mon then
-            bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
-            writeCentered(mon, math.floor(monH/2), "Waiting for hits...", monW)
-        end
-        local hits = listeningLoop()
-        if mon then
-            bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
+    while true do
+        term.clear()
+        local option = menu.monitorSelect({
+            "Start Round",
+        }, "Select an option", "Shooting Range", "v" .. version)
+        if option == 1 then
+            print("Recording all hits for 10 seconds...")
+            if mon then
+                bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
+                writeCentered(mon, math.floor(monH/2), "Waiting for hits...", monW)
+            end
+            local hits = listeningLoop()
+            if mon then
+                bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
+                if #hits > 0 then
+                    writeCentered(mon, 2, "Hits recorded: " .. #hits, monW)
+                    for i, hit in ipairs(hits) do
+                        local y = 3 + i
+                        if y > monH - 1 then break end
+                        mon.setCursorPos(3, y)
+                        mon.write("Hit " .. i .. ": " .. textutils.serialize(hit))
+                    end
+                else
+                    writeCentered(mon, math.floor(monH/2), "No hits recorded.", monW)
+                end
+            end
             if #hits > 0 then
-                writeCentered(mon, 2, "Hits recorded: " .. #hits, monW)
+                print("Hits recorded: " .. #hits)
                 for i, hit in ipairs(hits) do
-                    local y = 3 + i
-                    if y > monH - 1 then break end
-                    mon.setCursorPos(3, y)
-                    mon.write("Hit " .. i .. ": " .. textutils.serialize(hit))
+                    print("Hit " .. i .. ": " .. textutils.serialize(hit))
                 end
             else
-                writeCentered(mon, math.floor(monH/2), "No hits recorded.", monW)
-            end
-        end
-        if #hits > 0 then
-            print("Hits recorded: " .. #hits)
-            for i, hit in ipairs(hits) do
-                print("Hit " .. i .. ": " .. textutils.serialize(hit))
+                print("No hits recorded.")
             end
         else
-            print("No hits recorded.")
+            print("You selected an invalid option.")
         end
-    else
-        print("You selected an invalid option.")
     end
 end
 
