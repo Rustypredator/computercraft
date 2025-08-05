@@ -1,6 +1,6 @@
 
 local baseUrl = "https://raw.githubusercontent.com/Rustypredator/computercraft/refs/heads/main"
-local version = "0.0.5"
+local version = "0.0.6"
 
 -- Update function to check for updates and download the latest version
 -- @param currentVersion The current version of the script
@@ -42,15 +42,15 @@ end
 local function updateLib(libName)
     local url = "/libs/" .. libName .. ".lua"
     local versionUrl = "/libs/" .. libName .. ".ver"
-    local version = "0.0.0"
+    local libVersion = "0.0.0"
     if fs.exists("libs/" .. libName .. ".lua") then
         local lib = require("libs." .. libName)
         if lib and lib.version then
-            version = lib.version  -- Get the version from the library if it exists
+            libVersion = lib.version  -- Get the version from the library if it exists
         end
     end
-    
-    return update(version, url, versionUrl, "libs/" .. libName .. ".lua")
+
+    return update(libVersion, url, versionUrl, "libs/" .. libName .. ".lua")
 end
 
 local function updateSelf()
