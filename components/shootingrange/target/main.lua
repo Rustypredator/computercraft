@@ -7,12 +7,12 @@ os.pullEvent = os.pullEventRaw
 local updater = require("libs.updater")
 updater.updateSelf()
 
-local version = "0.0.2"
+local version = "0.0.3"
 
 -- Self Update function
 local function updateSelf()
     local updateUrl = "/components/shootingrange/target/main.lua"
-    local versionUrl = "/components/shootingrange/target/version"
+    local versionUrl = "/components/shootingrange/target/main.ver"
     -- update this script
     return updater.update(version, updateUrl, versionUrl, "startup.lua")
 end
