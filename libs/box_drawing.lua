@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the box drawing library
-local version = "0.0.5"
+local version = "0.0.6"
 
 -- Box drawing characters
 local topLeftCorner = "+"
@@ -25,7 +25,7 @@ end
 -- optionally a title and subtitle can be added
 -- title will be centered on the top line
 -- subtitle will be bottom right aligned
-local function outerRim(title, subtitle)
+local function termOuterRim(title, subtitle)
     local width, height = term.getSize()
     term.setCursorPos(1, 1)
     term.write(topLeftCorner .. string.rep(horizontalLine, width - 2) .. topRightCorner)
@@ -54,8 +54,42 @@ local function outerRim(title, subtitle)
     term.setCursorPos(2, 2) -- move cursor to the second line, second column (inside the box)
 end
 
+local function monitorOuterRim(title, subtitle, monitor)
+    if not monitor then
+        print("No monitor found. Please connect a monitor to use this function.")
+        return
+    end
+    local width, height = monitor.getSize()
+    monitor.setCursorPos(1, 1)
+    monitor.write(topLeftCorner .. string.rep(horizontalLine, width - 2) .. topRightCorner)
+
+    for y = 2, height - 1 do
+        monitor.setCursorPos(1, y)
+        monitor.write(verticalLine .. string.rep(" ", width - 2) .. verticalLine)
+    end
+
+    monitor.setCursorPos(1, height)
+    monitor.write(bottomLeftCorner .. string.rep(horizontalLine, width - 2) .. bottomRightCorner)
+
+    if title then
+        local titlePos = math.floor((width - #title) / 2) + 1
+        monitor.setCursorPos(titlePos, 1)
+        monitor.write(title)
+    end
+
+    if subtitle then
+        local subPos = width - (#subtitle + 3) -- leave 2 spaces in bottom right corner to avoid overlap with the corner
+        monitor.setCursorPos(subPos, height)
+        monitor.write(" " .. subtitle .. " ")
+    end
+
+    -- reset cursor position
+    monitor.setCursorPos(2, 2) -- move cursor to the second line, second column (inside the box)
+end
+
 return {
     version = version,
     update = update,
-    outerRim = outerRim
+    termOuterRim = termOuterRim,
+    monitorOuterRim = monitorOuterRim
 }

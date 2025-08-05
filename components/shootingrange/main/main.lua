@@ -12,7 +12,7 @@ updater.updateLib("menu")
 local bd = require("libs.box_drawing")
 local menu = require("libs.menu")
 
-local version = "0.0.4"
+local version = "0.0.5"
 
 -- Self Update function
 local function updateSelf()
@@ -96,7 +96,7 @@ local function main()
     local option = menu.termSelect({
         "Start Round",
     }, "Select an option", "Shooting Range", "v" .. version)
-    if option == "Start Round" then
+    if option == 1 then
         print("Recording all hits for 10 seconds...")
         hits = listeningLoop()
         if #hits > 0 then

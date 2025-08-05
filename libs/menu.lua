@@ -5,7 +5,7 @@ local updater = require("libs.updater")
 local bd = require("libs.box_drawing")
 
 -- Version of the box drawing library
-local version = "0.0.4"
+local version = "0.0.5"
 
 -- self update function
 local function update()
@@ -21,7 +21,7 @@ local function termSelect(options, prompt, title, subtitle)
     -- we assume the screen has not been cleared, we do that.
     term.clear()
     -- draw an outer box
-    bd.outerRim(title, subtitle)
+    bd.termOuterRim(title, subtitle)
     -- we draw the menu options inside the box
     term.setCursorPos(3, 3)
     term.write(prompt .. ":")
@@ -47,8 +47,35 @@ local function termSelect(options, prompt, title, subtitle)
     end
 end
 
+local function monitorSelect(options, prompt, title, subtitle)
+    monitor = peripheral.find("monitor")
+    if not monitor then
+        print("No monitor found. Please connect a monitor to use this function.")
+        return nil
+    end
+    monitor.clear()
+    bd.monitorOuterRim(title, subtitle, monitor)
+    monitor.setCursorPos(3, 3)
+    monitor.write(prompt .. ":")
+    local startY = 4
+    for i, option in ipairs(options) do
+        monitor.setCursorPos(3, startY + i - 1)
+        monitor.write("-> " .. option)
+    end
+    local selectedOption = nil
+    while true do
+        local event, side, x, y = os.pullEvent("monitor_touch")
+        if event == "monitor_touch" then
+            if x >= 3 and x <= monitor.getSize() and y >= startY and y < startY + #options then
+                selectedOption = y - startY + 1
+                return selectedOption
+            end
+        end
+    end
+
 return {
     version = version,
     update = update,
-    termSelect = termSelect
+    termSelect = termSelect,
+    monitorSelect = monitorSelect
 }
