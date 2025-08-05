@@ -1,6 +1,6 @@
 -- VaultGuard Setup Script
 
-local baseurl = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main"
+local baseurl = "https://raw.githubusercontent.com/Rustypredator/computercraft/refs/heads/main"
 
 print("VaultGuard Setup Script")
 print("Select what component you are installing:")

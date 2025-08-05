@@ -25,7 +25,7 @@ rednet.open("bottom") -- modem is on bottom
 
 function selfUpdate()
     -- urls
-    local baseUrl = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main"
+    local baseUrl = "https://raw.githubusercontent.com/Rustypredator/computercraft/refs/heads/main"
     local url = baseUrl .. "/old/terminal.lua"
     local versionUrl = baseUrl .. "/old/terminal.ver"
     -- get the latest version from the version URL

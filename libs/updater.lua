@@ -1,5 +1,5 @@
 
-local baseUrl = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/refs/heads/main"
+local baseUrl = "https://raw.githubusercontent.com/Rustypredator/computercraft/refs/heads/main"
 local version = "0.0.5"
 
 -- Update function to check for updates and download the latest version
