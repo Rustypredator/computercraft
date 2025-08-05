@@ -12,7 +12,7 @@ updater.updateLib("menu")
 local bd = require("libs.box_drawing")
 local menu = require("libs.menu")
 
-local version = "0.0.5"
+local version = "0.0.6"
 
 -- Self Update function
 local function updateSelf()
@@ -64,7 +64,7 @@ local function listeningLoop()
         print("Modem opened on channel 9832. Listening for messages...")
     else
         print("Error: No modem found.")
-        return
+        return {}
     end
     while true do
         local event, param1, param2, param3 = os.pullEvent()
@@ -83,6 +83,12 @@ local function listeningLoop()
     end
 end
 
+local function writeCentered(mon, y, text, width)
+    local x = math.floor((width - #text) / 2) + 1
+    mon.setCursorPos(x, y)
+    mon.write(text)
+end
+
 local function main()
     if not init() then
         print("Initialization failed. Exiting...")
@@ -91,14 +97,40 @@ local function main()
 
     local CHANNEL = 9832
 
+    -- Try to find a monitor
+    local mon = peripheral.find("monitor")
+    local monW, monH = 0, 0
+    if mon then
+        mon.setTextScale(0.5)
+        monW, monH = mon.getSize()
+    end
+
     --- Main
     term.clear()
-    local option = menu.termSelect({
+    local option = menu.monitorSelect({
         "Start Round",
     }, "Select an option", "Shooting Range", "v" .. version)
     if option == 1 then
         print("Recording all hits for 10 seconds...")
-        hits = listeningLoop()
+        if mon then
+            bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
+            writeCentered(mon, math.floor(monH/2), "Waiting for hits...", monW)
+        end
+        local hits = listeningLoop()
+        if mon then
+            bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
+            if #hits > 0 then
+                writeCentered(mon, 2, "Hits recorded: " .. #hits, monW)
+                for i, hit in ipairs(hits) do
+                    local y = 3 + i
+                    if y > monH - 1 then break end
+                    mon.setCursorPos(3, y)
+                    mon.write("Hit " .. i .. ": " .. textutils.serialize(hit))
+                end
+            else
+                writeCentered(mon, math.floor(monH/2), "No hits recorded.", monW)
+            end
+        end
         if #hits > 0 then
             print("Hits recorded: " .. #hits)
             for i, hit in ipairs(hits) do

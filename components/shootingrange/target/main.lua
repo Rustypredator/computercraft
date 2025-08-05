@@ -7,7 +7,7 @@ os.pullEvent = os.pullEventRaw
 local updater = require("libs.updater")
 updater.updateSelf()
 
-local version = "0.0.3"
+local version = "0.0.4"
 
 -- Self Update function
 local function updateSelf()
@@ -82,15 +82,24 @@ local function main()
         modem.open(CHANNEL)
     end
     while true do
-        local targetState = redstone.getInput("top")
+        -- Wait for redstone signal ON (rising edge)
+        while not redstone.getInput("top") do
+            sleep(0.05)
+        end
+        -- Send one message when signal is detected
         local message = {
             type = "target",
-            state = targetState,
+            state = true,
             position = pos,
             time = os.time()
         }
         modem.transmit(CHANNEL, CHANNEL, message)
-        sleep(0.5)
+        print("Redstone signal detected! Message sent.")
+        -- Wait for redstone signal OFF (falling edge)
+        while redstone.getInput("top") do
+            sleep(0.05)
+        end
+        print("Redstone signal reset. Ready for next trigger.")
     end
 end
 
