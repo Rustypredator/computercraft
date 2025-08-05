@@ -58,8 +58,35 @@ local function main()
         return
     end
 
+    local CHANNEL = 9832
+
     --- Main
     term.clear()
+    while true do
+        -- open modem on target channel and listen for messages
+        print("Opening modem on channel " .. CHANNEL)
+        local modem = peripheral.find("modem")
+        if modem then
+            modem.open(CHANNEL)
+            print("Modem opened successfully.")
+        else
+            print("Error: No modem found.")
+            return
+        end
+        print("Listening for messages on channel " .. CHANNEL)
+        local event, channel, message = os.pullEvent("modem_message")
+        if channel == CHANNEL then
+            print("Received message on channel " .. channel)
+            if type(message) == "table" and message.type == "target" then
+                print("Target message received: " .. message.data)
+                -- Here you can handle the target message, e.g., update the target position
+                -- For now, just print it
+                print("Target data: " .. textutils.serialize(message.data))
+            else
+                print("Unknown message type or format.")
+            end
+        end
+    end
 end
 
 -- Run the main function
