@@ -1,5 +1,8 @@
 -- Shooting Range Main Script
 
+-- prevent terminating the script:
+os.pullEvent = os.pullEventRaw
+
 -- updater
 local updater = require("libs.updater")
 updater.updateSelf()
@@ -9,7 +12,7 @@ updater.updateLib("menu")
 local bd = require("libs.box_drawing")
 local menu = require("libs.menu")
 
-local version = "0.0.1"
+local version = "0.0.2"
 
 -- Self Update function
 local function updateSelf()

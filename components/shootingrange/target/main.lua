@@ -1,10 +1,13 @@
 -- Shooting Range Target Script
 
+-- prevent terminating the script:
+os.pullEvent = os.pullEventRaw
+
 -- updater
 local updater = require("libs.updater")
 updater.updateSelf()
 
-local version = "0.0.1"
+local version = "0.0.2"
 
 -- Self Update function
 local function updateSelf()
