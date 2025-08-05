@@ -12,7 +12,7 @@ updater.updateLib("menu")
 local bd = require("libs.box_drawing")
 local menu = require("libs.menu")
 
-local version = "0.0.3"
+local version = "0.0.4"
 
 -- Self Update function
 local function updateSelf()
@@ -79,7 +79,6 @@ local function listeningLoop()
         elseif event == "timer" and param1 == timeout then
             print("Timeout reached. Stopping listening loop.")
             return hits
-            break
         end
     end
 end
