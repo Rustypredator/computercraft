@@ -4,24 +4,45 @@ local baseurl = "https://raw.githubusercontent.com/Rustypredator/cc-vault-guard/
 
 print("VaultGuard Setup Script")
 print("Select what component you are installing:")
-print("1. VaultGuard Main Server")
-print("2. VaultGuard Door")
-print("3. VaultGuard Terminal")
+print("1. VaultGuard")
+print("2. Shooting Range")
 
 local choice = io.read()
 local url = ""
 
 if choice == "1" then
-    print("Installing VaultGuard Main Server...")
-    url = baseurl .. "/components/main/main.lua"
+    -- submenu for VaultGuard
+    print("Select VaultGuard component:")
+    print("1. Main Server")
+    print("2. Door")
+    print("3. User Terminal")
+    local subChoice = io.read()
+    if subChoice == "1" then
+        url = baseurl .. "/components/vaultguard/main/main.lua"
+    elseif subChoice == "2" then
+        url = baseurl .. "/components/vaultguard/door/main.lua"
+    elseif subChoice == "3" then
+        url = baseurl .. "/components/vaultguard/terminal/main.lua"
+    else
+        print("Invalid choice. Exiting setup.")
+        os.exit(1)
+    end
 elseif choice == "2" then
-    print("Installing VaultGuard Door...")
-    url = baseurl .. "/components/door/door.lua"
-elseif choice == "3" then
-    print("Installing VaultGuard Terminal...")
-    url = baseurl .. "/components/term/term.lua"
+    -- submenu for Shooting Range
+    print("Select Shooting Range component:")
+    print("1. Main Computer")
+    print("2. Target")
+    local subChoice = io.read()
+    if subChoice == "1" then
+        url = baseurl .. "/components/shootingrange/main/main.lua"
+    elseif subChoice == "2" then
+        url = baseurl .. "/components/shootingrange/target/main.lua"
+    else
+        print("Invalid choice. Exiting setup.")
+        os.exit(1)
+    end
 else
-    print("Invalid choice. Please run the setup script again.")
+    print("Invalid choice. Exiting setup.")
     os.exit(1)
 end
 
