@@ -12,7 +12,7 @@ updater.updateLib("menu")
 local bd = require("libs.box_drawing")
 local menu = require("libs.menu")
 
-local version = "0.1.0"
+local version = "0.1.1"
 
 -- Self Update function
 local function updateSelf()
@@ -107,8 +107,11 @@ local function main()
     if mon then
         mon.setTextScale(0.5)
         monW, monH = mon.getSize()
+    else
+        print("No Monitor!")
+        return
     end
-
+    
     --- Main
     while true do
         term.clear()
@@ -136,14 +139,7 @@ local function main()
                     writeCentered(mon, math.floor(monH/2), "No hits recorded.", monW)
                 end
             end
-            if #hits > 0 then
-                print("Hits recorded: " .. #hits)
-                for i, hit in ipairs(hits) do
-                    print("Hit " .. i .. ": " .. textutils.serialize(hit))
-                end
-            else
-                print("No hits recorded.")
-            end
+            sleep(3)
         else
             print("You selected an invalid option.")
         end
