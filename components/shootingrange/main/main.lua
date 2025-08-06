@@ -8,11 +8,13 @@ local updater = require("libs.updater")
 updater.updateSelf()
 updater.updateLib("box_drawing")
 updater.updateLib("menu")
+updater.updateLib("txtutil")
 -- require the libraries
 local bd = require("libs.box_drawing")
 local menu = require("libs.menu")
+local txtutil = require("libs.txtutil")
 
-local version = "0.1.3"
+local version = "0.1.4"
 
 -- Self Update function
 local function updateSelf()
@@ -86,10 +88,45 @@ local function listeningLoop()
     end
 end
 
-local function writeCentered(mon, y, text, width)
-    local x = math.floor((width - #text) / 2) + 1
-    mon.setCursorPos(x, y)
-    mon.write(text)
+local function saveHits(hits)
+    -- save all hits to a file with the current timestamp in json format
+    local hitsDir = "hits"
+    if not fs.exists(hitsDir) then
+        fs.makeDir(hitsDir)
+    end
+    local fileName = "hits/hits_" .. os.date("%Y%m%d_%H%M%S") .. ".json"
+    -- create file if it doesnt exist
+    if fs.exists(fileName) then
+        print("File already exists: " .. fileName)
+        return false
+    end
+    local file = fs.open(fileName, "w")
+    if not file then
+        print("Error: Could not open file for writing: " .. fileName)
+        return false
+    end
+    local json = textutils.serializeJSON(hits)
+    file.write(json)
+    file.close()
+    return true
+end
+
+local function getSessionslist()
+    -- produce a table of all files in the hits directory
+    local hitsDir = "hits"
+    if not fs.exists(hitsDir) then
+        fs.makeDir(hitsDir)
+    end
+    local files = fs.list(hitsDir)
+    return files
+end
+
+local function calculateTotalScore(hits)
+    local totalScore = 0
+    for _, hit in ipairs(hits) do
+        totalScore = totalScore + hit.strength
+    end
+    return totalScore
 end
 
 local function main()
@@ -115,18 +152,19 @@ local function main()
         term.clear()
         local option = menu.monitorSelect({
             "Start Round",
+            "List Previous Sessions",
         }, "Select an option", "Shooting Range", "v" .. version)
         if option == 1 then
             print("Recording all hits for 10 seconds...")
             if mon then
                 bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
-                writeCentered(mon, math.floor(monH/2), "Waiting for hits...", monW)
+                txtutil.writeCentered(mon, math.floor(monH/2), "Waiting for hits...", monW)
             end
             local hits = listeningLoop()
             if mon then
                 bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
                 if #hits > 0 then
-                    writeCentered(mon, math.floor(monH/2), "Hits recorded: " .. #hits, monW)
+                    txtutil.writeCentered(mon, math.floor(monH/2), "Hits recorded: " .. #hits, monW)
                     sleep(2)
                     mon.clear()
                     bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
@@ -138,20 +176,52 @@ local function main()
                         if y > monH - 1 then break end
                         mon.setCursorPos(3, y)
                         mon.write(i .. ": " .. hit.strength)
-                        score = score + hit.strength
                     end
                     sleep(2)
                     mon.clear()
                     bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
-                    writeCentered(mon, math.floor(monH/2), "Total Score: " .. score, monW)
+                    txtutil.writeCentered(mon, math.floor(monH/2), "Total Score: " .. calculateTotalScore(hits), monW)
                     sleep(2)
                     mon.clear()
                     bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
                 else
-                    writeCentered(mon, math.floor(monH/2), "No hits recorded.", monW)
+                    txtutil.writeCentered(mon, math.floor(monH/2), "No hits recorded.", monW)
                 end
             end
             sleep(3)
+        elseif option == 2 then
+            -- get a session list
+            local sessions = getSessionslist()
+            if #sessions == 0 then
+                mon.clear()
+                bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
+                txtutil.writeCentered(mon, math.floor(monH/2), "No sessions found.", monW)
+                sleep(2)
+            else
+                mon.clear()
+                bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
+                txtutil.writeCentered(mon, 2, "Previous Sessions:", monW)
+                local selectedSession = menu.monitorSelect(sessions, "Select a session", "Shooting Range", "v" .. version)
+                if selectedSession then
+                    mon.clear()
+                    bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
+                    txtutil.writeCentered(mon, 2, "Session: " .. sessions[selectedSession], monW)
+                    local fileName = "hits/" .. sessions[selectedSession]
+                    if fs.exists(fileName) then
+                        local hits = textutil.readTable(fileName)
+                        if hits then
+                            mon.clear()
+                            bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
+                            txtutil.writeCentered(mon, 2, "Hits for session: " .. sessions[selectedSession], monW)
+                            txtutil.writeCentered(mon, 3, "Total Hits: " .. #hits .. " | Total Score: " .. calculateTotalScore(hits), monW)
+                            for i, hit in ipairs(hits) do
+                                mon.setCursorPos(3, i + 3)
+                                mon.write(hit)
+                            end
+                        end
+                    end
+                end
+            end
         else
             print("You selected an invalid option.")
         end
