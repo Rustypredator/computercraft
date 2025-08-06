@@ -12,7 +12,7 @@ updater.updateLib("menu")
 local bd = require("libs.box_drawing")
 local menu = require("libs.menu")
 
-local version = "0.1.1"
+local version = "0.1.2"
 
 -- Self Update function
 local function updateSelf()
@@ -73,10 +73,9 @@ local function listeningLoop()
             local channel = param2
             local returnChannel = param3
             local message = param4
-            print("Received message: " .. textutils.serialize(message))
-            if type(message) == "table" and message.type == "target" then
-                table.insert(hits, message.data)
-                print("Hit recorded: " .. textutils.serialize(message.data))
+            print("Received Hit.")
+            if type(message) == "table" and message.strength > 0 then
+                table.insert(hits, message)
             else
                 print("Unknown message type or format.")
             end
@@ -129,12 +128,24 @@ local function main()
                 bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
                 if #hits > 0 then
                     writeCentered(mon, 2, "Hits recorded: " .. #hits, monW)
+                    sleep(2)
+                    mon.clear()
+                    bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
+                    local score = 0
                     for i, hit in ipairs(hits) do
                         local y = 3 + i
                         if y > monH - 1 then break end
                         mon.setCursorPos(3, y)
                         mon.write("Hit " .. i .. ": " .. textutils.serialize(hit))
+                        score = score + hit.strength
                     end
+                    sleep(2)
+                    mon.clear()
+                    bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
+                    writeCentered(mon, monH - 1, "Total Score: " .. score, monW)
+                    sleep(2)
+                    mon.clear()
+                    bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
                 else
                     writeCentered(mon, math.floor(monH/2), "No hits recorded.", monW)
                 end

@@ -7,7 +7,7 @@ os.pullEvent = os.pullEventRaw
 local updater = require("libs.updater")
 updater.updateSelf()
 
-local version = "0.0.4"
+local version = "0.0.5"
 
 -- Self Update function
 local function updateSelf()
@@ -87,14 +87,17 @@ local function main()
             sleep(0.05)
         end
         -- Send one message when signal is detected
-        local message = {
-            type = "target",
-            state = true,
-            position = pos,
-            time = os.time()
-        }
-        modem.transmit(CHANNEL, CHANNEL, message)
-        print("Redstone signal detected! Message sent.")
+
+        local strength = redstone.getAnalogInput("top") -- Get the strength of the redstone signal
+        if strength > 1 then
+            local message = {
+                strength = strength, -- Get the strength of the redstone signal
+                position = pos,
+                time = os.time()
+            }
+            modem.transmit(CHANNEL, CHANNEL, message)
+            print("Hit with Score of " .. strength .. " recorded.")
+        end
         -- Wait for redstone signal OFF (falling edge)
         while redstone.getInput("top") do
             sleep(0.05)
