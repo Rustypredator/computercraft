@@ -14,7 +14,7 @@ local menu = require("libs.menu")
 local txtutil = require("libs.txtutil")
 local ui = require("libs.ui")
 
-local version = "0.1.7"
+local version = "0.1.8"
 
 -- Self Update function
 local function updateSelf()
@@ -203,8 +203,8 @@ local function main()
                     mon.clear()
                     ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
                     txtutil.writeCentered(mon, 2, "Previous Sessions:", monW)
-                    -- Draw exit button at (4,5)
-                    ui.drawMonitorButton(mon, 4, 5, 7, 1, colors.red, colors.white, "[ Exit ]")
+                    -- Draw back button at (4,5)
+                    ui.drawMonitorButton(mon, 4, 5, 7, 1, colors.red, colors.white, "[ Back ]")
                     -- Draw session list below button
                     for i, session in ipairs(sessions) do
                         local y = 6 + i
@@ -215,7 +215,7 @@ local function main()
                     -- Wait for touch event
                     local event, side, x, y = os.pullEvent("monitor_touch")
                     if x >= 2 and x <= 8 and y == 5 then
-                        break -- Exit button pressed
+                        break -- Back button pressed
                     end
                     -- Check if a session was selected (simulate menu.monitorSelect)
                     for i, session in ipairs(sessions) do
@@ -227,26 +227,33 @@ local function main()
                             txtutil.writeCentered(mon, 2, "Session: " .. session, monW)
                             local fileName = "hits/" .. session
                             if fs.exists(fileName) then
-                                local hits = textutils.unserializeJSON(fs.read(fileName))
+                                local file = fs.open(fileName, "r")
+                                if not file then
+                                    print("Error: Could not open file for reading: " .. fileName)
+                                    return
+                                end
+                                local fileContent = file.readAll()
+                                file.close()
+                                local hits = textutils.unserializeJSON(fileContent)
                                 if hits then
                                     while true do
                                         mon.clear()
                                         ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
                                         txtutil.writeCentered(mon, 2, "Hits for session: " .. session, monW)
                                         txtutil.writeCentered(mon, 3, "Total Hits: " .. #hits .. " | Total Score: " .. calculateTotalScore(hits), monW)
-                                        -- Draw exit button at (4,5)
-                                        ui.drawMonitorButton(mon, 4, 5, 7, 1, colors.red, colors.white, "[ Exit ]")
+                                        -- Draw back button at (4,5)
+                                        ui.drawMonitorButton(mon, 4, 5, 7, 1, colors.red, colors.white, "[ Back ]")
                                         -- Draw hits below button
                                         for j, hit in ipairs(hits) do
                                             local hy = 6 + j
                                             if hy > monH - 1 then break end
                                             mon.setCursorPos(3, hy)
-                                            mon.write(hit)
+                                            mon.write(j .. ": " .. hit.strength)
                                         end
                                         -- Wait for touch event
                                         local e, s, tx, ty = os.pullEvent("monitor_touch")
                                         if tx >= 2 and tx <= 8 and ty == 5 then
-                                            break -- Exit button pressed
+                                            break -- Back button pressed
                                         end
                                     end
                                 end
