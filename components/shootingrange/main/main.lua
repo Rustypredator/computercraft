@@ -9,12 +9,14 @@ updater.updateSelf()
 updater.updateLib("menu")
 updater.updateLib("txtutil")
 updater.updateLib("ui")
+updater.updateLib("cmd")
 -- require the libraries
 local menu = require("libs.menu")
 local txtutil = require("libs.txtutil")
 local ui = require("libs.ui")
+local cmd = require("libs.cmd")
 
-local version = "0.1.8"
+local version = "0.1.9"
 
 -- Self Update function
 local function updateSelf()
@@ -57,6 +59,20 @@ local function init()
     return true
 end
 
+local function countdown(mon, seconds)
+    -- display a countdown on the monitor
+    if not mon then
+        print("No monitor found for countdown.")
+        return
+    end
+    mon.clear()
+    ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
+    for i = seconds, 1, -1 do
+        txtutil.writeCentered(mon, math.floor(mon.getSize() / 2), tostring(i), mon.getSize())
+        sleep(1)
+    end
+end
+
 local function listeningLoop()
     local timeout = os.startTimer(10) -- record all hits for 10 seconds
     local modem = peripheral.find("modem")
@@ -88,13 +104,14 @@ local function listeningLoop()
     end
 end
 
-local function saveHits(hits)
+local function saveSession(hits, playerName)
+    print("Saving " .. #hits .. " hits for player: " .. playerName)
     -- save all hits to a file with the current timestamp in json format
-    local hitsDir = "hits"
-    if not fs.exists(hitsDir) then
-        fs.makeDir(hitsDir)
+    local sessionDir = "sessions"
+    if not fs.exists(sessionDir) then
+        fs.makeDir(sessionDir)
     end
-    local fileName = "hits/hits_" .. os.date("%Y%m%d_%H%M%S") .. ".json"
+    local fileName = sessionDir .. "/hits_" .. os.date("%Y%m%d_%H%M%S") .. ".json"
     -- create file if it doesnt exist
     if fs.exists(fileName) then
         print("File already exists: " .. fileName)
@@ -105,20 +122,51 @@ local function saveHits(hits)
         print("Error: Could not open file for writing: " .. fileName)
         return false
     end
-    local json = textutils.serializeJSON(hits)
+    local data = {
+        hits = hits,
+        player = playerName,
+        timestamp = os.date("%Y-%m-%d %H:%M:%S")
+    }
+    local json = textutils.serializeJSON(data)
     file.write(json)
     file.close()
     return true
 end
 
-local function getSessionslist()
-    -- produce a table of all files in the hits directory
-    local hitsDir = "hits"
-    if not fs.exists(hitsDir) then
-        fs.makeDir(hitsDir)
+local function getSessionsList()
+    -- produce a table of all files in the sessions directory
+    local sessionsDir = "sessions"
+    if not fs.exists(sessionsDir) then
+        fs.makeDir(sessionsDir)
     end
-    local files = fs.list(hitsDir)
+    local files = fs.list(sessionsDir)
+    -- sanitize file names to not include path or file extension.
+    for i, file in ipairs(files) do
+        files[i] = file:gsub("%.json$", "") -- remove .json extension
+    end
     return files
+end
+
+local function getSession(sessionName)
+    -- get a single session by name
+    local sessionDir = "sessions"
+    if not fs.exists(sessionDir) then
+        fs.makeDir(sessionDir)
+    end
+    local fileName = sessionDir .. "/" .. sessionName .. ".json"
+    if not fs.exists(fileName) then
+        print("Error: File does not exist: " .. fileName)
+        return nil
+    end
+    local file = fs.open(fileName, "r")
+    if not file then
+        print("Error: Could not open file for reading: " .. fileName)
+        return nil
+    end
+    local fileContent = file.readAll()
+    file.close()
+    local data = textutils.unserializeJSON(fileContent)
+    return data
 end
 
 local function calculateTotalScore(hits)
@@ -127,6 +175,12 @@ local function calculateTotalScore(hits)
         totalScore = totalScore + hit.strength
     end
     return totalScore
+end
+
+local function calculateAverageScore(hits)
+    if #hits == 0 then return 0 end
+    local totalScore = calculateTotalScore(hits)
+    return totalScore / #hits
 end
 
 local function main()
@@ -142,26 +196,34 @@ local function main()
     local monW, monH = 0, 0
     if mon then
         monW, monH = mon.getSize()
+        mon.setTextScale(0.5)
     else
         print("No Monitor!")
         return
     end
+    -- try to find a speaker
+    local speaker = peripheral.find("speaker")
     
     --- Main
     while true do
-        term.clear()
-        local option = menu.monitorSelect({
+        local option = menu.monitorSelect(mon, {
             "Start Round",
             "List Previous Sessions",
         }, "Select an option", "Shooting Range", "v" .. version)
         if option == 1 then
+            -- get nearest player name (should be the one who clicked the monitor)
+            local playerName = cmd.getNearestPlayerName("Your Session is starting in 3 seconds, Get ready! (Listen for the Whistle)")
             print("Recording all hits for 10 seconds...")
-            if mon then
-                ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
-                txtutil.writeCentered(mon, math.floor(monH/2), "Waiting for hits...", monW)
+            countdown(mon, 3)
+            if speaker then
+                speaker.playSound("create_things_and_misc:portable_whistle", 1, 1)
             end
+            txtutil.writeCentered(mon, math.floor(monH/2), "Waiting for hits...", monW)
             local hits = listeningLoop()
-            saveHits(hits)
+            if speaker then
+                speaker.playSound("create_things_and_misc:portable_whistle", 1, 1)
+            end
+            saveSession(hits, playerName)
             if mon then
                 ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
                 if #hits > 0 then
@@ -181,7 +243,7 @@ local function main()
                     sleep(2)
                     mon.clear()
                     ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
-                    txtutil.writeCentered(mon, math.floor(monH/2), "Total Score: " .. calculateTotalScore(hits), monW)
+                    txtutil.writeCentered(mon, math.floor(monH/2), "Total: " .. calculateTotalScore(hits) .. " | Average: " .. calculateAverageScore(hits), monW)
                     sleep(2)
                     mon.clear()
                     ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
@@ -192,7 +254,7 @@ local function main()
             sleep(3)
         elseif option == 2 then
             -- get a session list
-            local sessions = getSessionslist()
+            local sessions = getSessionsList()
             if #sessions == 0 then
                 mon.clear()
                 ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
@@ -210,14 +272,20 @@ local function main()
                         local y = 6 + i
                         if y > monH - 1 then break end
                         mon.setCursorPos(3, y)
-                        mon.write(session)
+                        -- load session to display details
+                        local sessionData = getSession(session)
+                        if sessionData then
+                            mon.write((sessionData.player or "Unknown") .. "@" .. sessionData.timestamp .. " | Hits: " .. #sessionData.hits .. " | Total: " .. calculateTotalScore(sessionData.hits) .. " | Average: " .. calculateAverageScore(sessionData.hits))
+                        else
+                            mon.write(session .. " | Error loading session")
+                        end
                     end
                     -- Wait for touch event
                     local event, side, x, y = os.pullEvent("monitor_touch")
                     if x >= 2 and x <= 8 and y == 5 then
                         break -- Back button pressed
                     end
-                    -- Check if a session was selected (simulate menu.monitorSelect)
+                    -- Check if a session was selected
                     for i, session in ipairs(sessions) do
                         local sy = 6 + i
                         if x >= 3 and x <= (3 + #session - 1) and y == sy then
