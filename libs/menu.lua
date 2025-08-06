@@ -2,10 +2,10 @@
 
 -- imports
 local updater = require("libs.updater")
-local bd = require("libs.ui")
+local ui = require("libs.ui")
 
 -- Version of the box drawing library
-local version = "0.0.7"
+local version = "0.0.8"
 
 -- self update function
 local function update()
@@ -21,7 +21,7 @@ local function termSelect(options, prompt, title, subtitle)
     -- we assume the screen has not been cleared, we do that.
     term.clear()
     -- draw an outer box
-    bd.termOuterRim(title, subtitle)
+    ui.termOuterRim(title, subtitle)
     -- we draw the menu options inside the box
     term.setCursorPos(3, 3)
     term.write(prompt .. ":")
