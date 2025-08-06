@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the box drawing library
-local version = "0.0.1"
+local version = "0.0.2"
 
 -- self update function
 local function update()
@@ -20,6 +20,9 @@ local function drawMonitorButton(monitor, x, y, width, height, bgColor, fgColor,
     monitor.write(string.rep(" ", width))  -- Clear the line
     monitor.setCursorPos(x + math.floor((width - #text) / 2), y + math.floor(height / 2))
     monitor.write(text)
+    -- reset colors
+    monitor.setBackgroundColor(colors.black)
+    monitor.setTextColor(colors.white)
 end
 
 local function drawMonitorBox(monitor, x, y, width, height, topLeftLabel, topCenterLabel, topRightLabel, bottomLeftLabel, bottomCenterLabel, bottomRightLabel)
