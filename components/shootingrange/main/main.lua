@@ -12,7 +12,7 @@ updater.updateLib("menu")
 local bd = require("libs.box_drawing")
 local menu = require("libs.menu")
 
-local version = "0.1.2"
+local version = "0.1.3"
 
 -- Self Update function
 local function updateSelf()
@@ -104,7 +104,6 @@ local function main()
     local mon = peripheral.find("monitor")
     local monW, monH = 0, 0
     if mon then
-        mon.setTextScale(0.5)
         monW, monH = mon.getSize()
     else
         print("No Monitor!")
@@ -127,22 +126,24 @@ local function main()
             if mon then
                 bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
                 if #hits > 0 then
-                    writeCentered(mon, 2, "Hits recorded: " .. #hits, monW)
+                    writeCentered(mon, math.floor(monH/2), "Hits recorded: " .. #hits, monW)
                     sleep(2)
                     mon.clear()
                     bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
+                    mon.setCursorPos(3, 2)
+                    mon.write("Hits:")
                     local score = 0
                     for i, hit in ipairs(hits) do
                         local y = 3 + i
                         if y > monH - 1 then break end
                         mon.setCursorPos(3, y)
-                        mon.write("Hit " .. i .. ": " .. textutils.serialize(hit))
+                        mon.write(i .. ": " .. hit.strength)
                         score = score + hit.strength
                     end
                     sleep(2)
                     mon.clear()
                     bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
-                    writeCentered(mon, monH - 1, "Total Score: " .. score, monW)
+                    writeCentered(mon, math.floor(monH/2), "Total Score: " .. score, monW)
                     sleep(2)
                     mon.clear()
                     bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
