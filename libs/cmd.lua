@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the CMD library
-local version = "0.0.2"
+local version = "0.0.3"
 
 -- self update function
 local function update()
@@ -13,11 +13,10 @@ local function update()
     updater.update(version, url, versionUrl, "libs/cmd.lua")
 end
 
-local function getNearestPlayerName()
-    local success, output = commands.exec("execute as @p run data get entity @s")
+local function getNearestPlayerName(message)
+    local success, output = commands.exec("tell @p " .. (message or "dont mind me :)"))
     if success and output and #output > 0 then
-        -- Output example: "Player data for Player123 has the following properties: ..."
-        local name = output[1]:match("Player data for ([^ ]+)")
+        local name = output[1]:match("You whisper to ([^ ]+):")
         name = tostring(name)
         if name and #name > 0 then
             return name
