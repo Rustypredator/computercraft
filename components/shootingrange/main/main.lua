@@ -14,7 +14,7 @@ local bd = require("libs.box_drawing")
 local menu = require("libs.menu")
 local txtutil = require("libs.txtutil")
 
-local version = "0.1.4"
+local version = "0.1.5"
 
 -- Self Update function
 local function updateSelf()
@@ -161,6 +161,7 @@ local function main()
                 txtutil.writeCentered(mon, math.floor(monH/2), "Waiting for hits...", monW)
             end
             local hits = listeningLoop()
+            saveHits(hits)
             if mon then
                 bd.monitorOuterRim("Shooting Range", "v" .. version, mon)
                 if #hits > 0 then
