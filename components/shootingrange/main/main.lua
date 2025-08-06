@@ -14,7 +14,7 @@ local menu = require("libs.menu")
 local txtutil = require("libs.txtutil")
 local ui = require("libs.ui")
 
-local version = "0.1.6"
+local version = "0.1.7"
 
 -- Self Update function
 local function updateSelf()
@@ -157,18 +157,18 @@ local function main()
         if option == 1 then
             print("Recording all hits for 10 seconds...")
             if mon then
-                ui.drawMonitorOuterBox("Shooting Range", "v" .. version, mon)
+                ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
                 txtutil.writeCentered(mon, math.floor(monH/2), "Waiting for hits...", monW)
             end
             local hits = listeningLoop()
             saveHits(hits)
             if mon then
-                ui.drawMonitorOuterBox("Shooting Range", "v" .. version, mon)
+                ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
                 if #hits > 0 then
                     txtutil.writeCentered(mon, math.floor(monH/2), "Hits recorded: " .. #hits, monW)
                     sleep(2)
                     mon.clear()
-                    ui.drawMonitorOuterBox("Shooting Range", "v" .. version, mon)
+                    ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
                     mon.setCursorPos(3, 2)
                     mon.write("Hits:")
                     local score = 0
@@ -180,11 +180,11 @@ local function main()
                     end
                     sleep(2)
                     mon.clear()
-                    ui.drawMonitorOuterBox("Shooting Range", "v" .. version, mon)
+                    ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
                     txtutil.writeCentered(mon, math.floor(monH/2), "Total Score: " .. calculateTotalScore(hits), monW)
                     sleep(2)
                     mon.clear()
-                    ui.drawMonitorOuterBox("Shooting Range", "v" .. version, mon)
+                    ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
                 else
                     txtutil.writeCentered(mon, math.floor(monH/2), "No hits recorded.", monW)
                 end
@@ -195,16 +195,16 @@ local function main()
             local sessions = getSessionslist()
             if #sessions == 0 then
                 mon.clear()
-                ui.drawMonitorOuterBox("Shooting Range", "v" .. version, mon)
+                ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
                 txtutil.writeCentered(mon, math.floor(monH/2), "No sessions found.", monW)
                 sleep(2)
             else
                 while true do
                     mon.clear()
-                    ui.drawMonitorOuterBox("Shooting Range", "v" .. version, mon)
+                    ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
                     txtutil.writeCentered(mon, 2, "Previous Sessions:", monW)
-                    -- Draw exit button at (2,5)
-                    ui.drawMonitorButton(mon, 2, 5, 7, 1, colors.red, colors.white, "[ Exit ]")
+                    -- Draw exit button at (4,5)
+                    ui.drawMonitorButton(mon, 4, 5, 7, 1, colors.red, colors.white, "[ Exit ]")
                     -- Draw session list below button
                     for i, session in ipairs(sessions) do
                         local y = 6 + i
@@ -223,7 +223,7 @@ local function main()
                         if x >= 3 and x <= (3 + #session - 1) and y == sy then
                             -- Session selected, show session view
                             mon.clear()
-                            ui.drawMonitorOuterBox("Shooting Range", "v" .. version, mon)
+                            ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
                             txtutil.writeCentered(mon, 2, "Session: " .. session, monW)
                             local fileName = "hits/" .. session
                             if fs.exists(fileName) then
@@ -231,11 +231,11 @@ local function main()
                                 if hits then
                                     while true do
                                         mon.clear()
-                                        ui.drawMonitorOuterBox("Shooting Range", "v" .. version, mon)
+                                        ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
                                         txtutil.writeCentered(mon, 2, "Hits for session: " .. session, monW)
                                         txtutil.writeCentered(mon, 3, "Total Hits: " .. #hits .. " | Total Score: " .. calculateTotalScore(hits), monW)
-                                        -- Draw exit button at (2,5)
-                                        ui.drawMonitorButton(mon, 2, 5, 7, 1, colors.red, colors.white, "[ Exit ]")
+                                        -- Draw exit button at (4,5)
+                                        ui.drawMonitorButton(mon, 4, 5, 7, 1, colors.red, colors.white, "[ Exit ]")
                                         -- Draw hits below button
                                         for j, hit in ipairs(hits) do
                                             local hy = 6 + j
