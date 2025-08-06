@@ -2,10 +2,10 @@
 
 -- imports
 local updater = require("libs.updater")
-local bd = require("libs.box_drawing")
+local bd = require("libs.ui")
 
 -- Version of the box drawing library
-local version = "0.0.6"
+local version = "0.0.7"
 
 -- self update function
 local function update()
@@ -47,14 +47,9 @@ local function termSelect(options, prompt, title, subtitle)
     end
 end
 
-local function monitorSelect(options, prompt, title, subtitle)
-    monitor = peripheral.find("monitor")
-    if not monitor then
-        print("No monitor found. Please connect a monitor to use this function.")
-        return nil
-    end
+local function monitorSelect(monitor, options, prompt, title, subtitle)
     monitor.clear()
-    bd.monitorOuterRim(title, subtitle, monitor)
+    ui.drawMonitorOuterBox(monitor, "", title, "", "", "", subtitle)
     monitor.setCursorPos(3, 3)
     monitor.write(prompt .. ":")
     local startY = 4
