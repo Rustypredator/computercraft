@@ -118,7 +118,7 @@ end
 
 local function saveSession(hits, playerName)
     print("Saving " .. #hits .. " hits for player: " .. playerName)
-    local unixTimestamp = os.epoch("utc") / 1000
+    local unixTimestamp = math.floor(os.epoch("utc") / 1000)
     -- save all hits to a file with the current timestamp in json format
     local sessionDir = "sessions"
     if not fs.exists(sessionDir) then
