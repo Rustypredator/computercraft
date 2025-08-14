@@ -16,7 +16,7 @@ local txtutil = require("libs.txtutil")
 local ui = require("libs.ui")
 local cmd = require("libs.cmd")
 
-local version = "0.2.0"
+local version = "0.2.1"
 
 -- Self Update function
 local function updateSelf()
@@ -104,8 +104,21 @@ local function listeningLoop()
     end
 end
 
+local function getSecret()
+    if not fs.exists("secret.txt") then
+        local secretFile = fs.open("secret.txt", "w")
+        secretFile.write("CHANGEME")
+        secretFile.close()
+    end
+    local secretFile = fs.open("secret.txt", "r")
+    local secret = secretFile.readAll()
+    secretFile.close()
+    return secret
+end
+
 local function saveSession(hits, playerName)
     print("Saving " .. #hits .. " hits for player: " .. playerName)
+    local unixTimestamp = os.epoch("utc") / 1000
     -- save all hits to a file with the current timestamp in json format
     local sessionDir = "sessions"
     if not fs.exists(sessionDir) then
@@ -125,11 +138,30 @@ local function saveSession(hits, playerName)
     local data = {
         hits = hits,
         player = playerName,
-        timestamp = os.date("%Y-%m-%d %H:%M:%S")
+        timestamp = unixTimestamp
     }
     local json = textutils.serializeJSON(data)
     file.write(json)
     file.close()
+    -- try to save the data to the web api:
+    -- create a hash to identify myself:
+    local secret = getSecret()
+    local hash = textutils.hash("sha256", unixTimestamp .. secret)
+    local requestData = {
+        playerName = playerName,
+        timestamp = unixTimestamp,
+        hits = hits,
+        hash = hash
+    }
+    local url = "https://taczsrscores.create-st.net/api/save"
+    local response = http.post(url, textutils.serializeJSON(requestData), {
+        ["Content-Type"] = "application/json"
+    })
+    if response and response.getResponseCode() == 200 then
+        print("Session saved successfully to the webdb.")
+    else
+        print("Error saving session to the webdb.")
+    end
     return true
 end
 
@@ -206,9 +238,11 @@ local function main()
     
     --- Main
     while true do
+        txtutil.writeCentered(mon, math.floor(monH/2), "Please visit this url for a list of sessions:", monW)
+        txtutil.writeCentered(mon, math.floor(monH/2) + 1, "https://taczsrscores.create-st.net", monW)
+        txtutil.writeCentered(mon, math.floor(monH/2) + 2, "This is due to limitations with cc Displays", monW)
         local option = menu.monitorSelect(mon, {
-            "Start Round",
-            "List Previous Sessions",
+            "Start Round"
         }, "Select an option", "Shooting Range", "v" .. version)
         if option == 1 then
             -- get nearest player name (should be the one who clicked the monitor)
@@ -252,90 +286,6 @@ local function main()
                 end
             end
             sleep(3)
-        elseif option == 2 then
-            mon.clear()
-            ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
-            txtutil.writeCentered(mon, math.floor(monH/2), "Please visit this url for a scoreboard:", monW)
-            txtutil.writeCentered(mon, math.floor(monH/2) + 1, "https://example.com/scoreboard", monW)
-            txtutil.writeCentered(mon, math.floor(monH/2) + 2, "This is due to limitations with cc Displays", monW)
-            break
-            -- get a session list
-            local sessions = getSessionsList()
-            if #sessions == 0 then
-                mon.clear()
-                ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
-                txtutil.writeCentered(mon, math.floor(monH/2), "No sessions found.", monW)
-                sleep(2)
-            else
-                while true do
-                    mon.clear()
-                    ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
-                    txtutil.writeCentered(mon, 2, "Previous Sessions:", monW)
-                    -- Draw back button at (4,5)
-                    ui.drawMonitorButton(mon, 4, 5, 7, 1, colors.red, colors.white, "[ Back ]")
-                    -- Draw session list below button
-                    for i, session in ipairs(sessions) do
-                        local y = 6 + i
-                        if y > monH - 1 then break end
-                        mon.setCursorPos(3, y)
-                        -- load session to display details
-                        local sessionData = getSession(session)
-                        if sessionData then
-                            mon.write((sessionData.player or "Unknown") .. "@" .. sessionData.timestamp .. " | Hits: " .. #sessionData.hits .. " | Total: " .. calculateTotalScore(sessionData.hits) .. " | Average: " .. calculateAverageScore(sessionData.hits))
-                        else
-                            mon.write(session .. " | Error loading session")
-                        end
-                    end
-                    -- Wait for touch event
-                    local event, side, x, y = os.pullEvent("monitor_touch")
-                    if x >= 2 and x <= 8 and y == 5 then
-                        break -- Back button pressed
-                    end
-                    -- Check if a session was selected
-                    for i, session in ipairs(sessions) do
-                        local sy = 6 + i
-                        if x >= 3 and x <= (3 + #session - 1) and y == sy then
-                            -- Session selected, show session view
-                            mon.clear()
-                            ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
-                            txtutil.writeCentered(mon, 2, "Session: " .. session, monW)
-                            local fileName = "hits/" .. session
-                            if fs.exists(fileName) then
-                                local file = fs.open(fileName, "r")
-                                if not file then
-                                    print("Error: Could not open file for reading: " .. fileName)
-                                    return
-                                end
-                                local fileContent = file.readAll()
-                                file.close()
-                                local hits = textutils.unserializeJSON(fileContent)
-                                if hits then
-                                    while true do
-                                        mon.clear()
-                                        ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
-                                        txtutil.writeCentered(mon, 2, "Hits for session: " .. session, monW)
-                                        txtutil.writeCentered(mon, 3, "Total Hits: " .. #hits .. " | Total Score: " .. calculateTotalScore(hits), monW)
-                                        -- Draw back button at (4,5)
-                                        ui.drawMonitorButton(mon, 4, 5, 7, 1, colors.red, colors.white, "[ Back ]")
-                                        -- Draw hits below button
-                                        for j, hit in ipairs(hits) do
-                                            local hy = 6 + j
-                                            if hy > monH - 1 then break end
-                                            mon.setCursorPos(3, hy)
-                                            mon.write(j .. ": " .. hit.strength)
-                                        end
-                                        -- Wait for touch event
-                                        local e, s, tx, ty = os.pullEvent("monitor_touch")
-                                        if tx >= 2 and tx <= 8 and ty == 5 then
-                                            break -- Back button pressed
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
         else
             print("You selected an invalid option.")
         end
