@@ -30,7 +30,8 @@
 function db_createTable(): void
 {
     $db = new SQLite3('shootingrange.db');
-    $db->exec("CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY, playerName TEXT, timestamp TEXT, hits TEXT)");
+    $db->exec("CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY, playerName TEXT, timestamp TEXT)");
+    $db->exec("CREATE TABLE IF NOT EXISTS hits (id INTEGER PRIMARY KEY, sessionId INTEGER, score INTEGER, time TEXT, position TEXT, FOREIGN KEY(sessionId) REFERENCES sessions(id))");
 }
 
 function db_connect(): SQLite3
@@ -94,56 +95,36 @@ function api_save(): bool
     // Save session to db:
     db_createTable();
     $db = db_connect();
-    $stmt = $db->prepare("INSERT INTO sessions (playerName, timestamp, hits) VALUES (:playerName, :timestamp, :hits)");
+    $stmt = $db->prepare("INSERT INTO sessions (playerName, timestamp) VALUES (:playerName, :timestamp)");
     $stmt->bindValue(':playerName', $playername, SQLITE3_TEXT);
     $stmt->bindValue(':timestamp', $data['timestamp'], SQLITE3_TEXT);
-    $stmt->bindValue(':hits', json_encode($data['hits']), SQLITE3_TEXT);
     $result = (bool)$stmt->execute();
     if (!$result) {
         return false;
     }
-    return true;
-}
+    // get id of just inserted session:
+    $sessionId = $db->lastInsertRowID();
 
-function index_dump(): void
-{
-    // This function is used to dump the current state of the shooting range.
-    // It will return a JSON object with all sessions.
-    $db = db_connect();
-    $results = $db->query("SELECT * FROM sessions");
-    $sessions = [];
-    while ($row = $results->fetchArray(SQLITE3_ASSOC)) {
-        $sessions[] = $row;
+    // Save hits to db:
+    foreach ($data['hits'] as $hit) {
+        $stmt = $db->prepare("INSERT INTO hits (sessionId, score, time, position) VALUES (:sessionId, :score, :time, :position)");
+        $stmt->bindValue(':sessionId', $sessionId, SQLITE3_INTEGER);
+        $stmt->bindValue(':score', $hit['strength'], SQLITE3_INTEGER);
+        $stmt->bindValue(':time', $hit['time'], SQLITE3_TEXT);
+        $stmt->bindValue(':position', json_encode($hit['position']), SQLITE3_TEXT);
+        $stmt->execute();
     }
-    echo json_encode($sessions);
+    return true;
 }
 
 function htmlHeader($title = 'Scoreboard'): void
 {
-
-    echo "<a href=\"/\">Home</a>";
+    echo "<a href=\"/\">All Sessions</a> | <a href=\"/?sort=score\">All Sessions (sorted by total Score)</a> | <a href=\"/?sort=average\">All Sessions (sorted by average Score)</a>";
 
     echo "<h1>Scoreboard</h1>";
     echo "<p>Welcome to the shooting range scoreboard!</p>";
 
     echo "<h2>" . htmlspecialchars($title) . "</h2>";
-
-}
-
-function calculateTotalScore($hits): int
-{
-    $total = 0;
-    foreach ($hits as $hit) {
-        $total += $hit['strength'];
-    }
-    return $total;
-}
-
-function calculateAverageScore($hits): float
-{
-    $total = calculateTotalScore($hits);
-    $count = count($hits);
-    return $count > 0 ? $total / $count : 0;
 }
 
 function calculateAverageTimeBetweenHits($hits): float
@@ -165,7 +146,17 @@ function calculateAverageTimeBetweenHits($hits): float
 function index_table(): void
 {
     $db = db_connect();
-    $data = $db->query("SELECT * FROM sessions");
+    // get sorting rule
+    if (!empty($_GET['sort'])) {
+        $sort = $_GET['sort'];
+        if ($sort === 'score') {
+            $data = $db->query("SELECT sessions.*, SUM(hits.score) as totalScore, AVG(hits.score) as averageScore FROM sessions JOIN hits ON sessions.id = hits.sessionId GROUP BY sessions.id ORDER BY totalScore DESC");
+        } elseif ($sort === 'average') {
+            $data = $db->query("SELECT sessions.*, SUM(hits.score) as totalScore, AVG(hits.score) as averageScore FROM sessions JOIN hits ON sessions.id = hits.sessionId GROUP BY sessions.id ORDER BY averageScore DESC");
+        }
+    } else {
+        $data = $db->query("SELECT sessions.*, SUM(hits.score) as totalScore, AVG(hits.score) as averageScore FROM sessions JOIN hits ON sessions.id = hits.sessionId GROUP BY sessions.id");
+    }
     $sessions = [];
     while ($row = $data->fetchArray(SQLITE3_ASSOC)) {
         $sessions[] = $row;
@@ -180,21 +171,16 @@ function index_table(): void
     <tr>
         <th>Player</th>
         <th>Timestamp</th>
-        <th>Hits</th>
         <th>Total Score</th>
         <th>Average Score</th>
-        <th>Average Time Between Hits</th>
         <th>Actions</th>
     </tr>";
     foreach ($sessions as $session) {
-        $hits = json_decode($session['hits'], true);
         echo "<tr>";
         echo "<td><a href=\"/player/" . htmlspecialchars($session['playerName']) . "\">" . htmlspecialchars($session['playerName']) . "</a></td>";
         echo "<td>" . htmlspecialchars(date('Y-m-d H:i:s', $session['timestamp'])) . "</td>";
-        echo "<td>" . htmlspecialchars(count($hits ?? []) ?? 0) . "</td>";
-        echo "<td>" . htmlspecialchars(calculateTotalScore($hits)) . "</td>";
-        echo "<td>" . htmlspecialchars(calculateAverageScore($hits)) . "</td>";
-        echo "<td>" . htmlspecialchars(calculateAverageTimeBetweenHits($hits)) . "</td>";
+        echo "<td>" . htmlspecialchars($session['totalScore']) . "</td>";
+        echo "<td>" . htmlspecialchars($session['averageScore']) . "</td>";
         echo "
         <td>
             <a href=\"/session/" . htmlspecialchars($session['id']) . "\">Details</a>
@@ -207,7 +193,16 @@ function index_table(): void
 function playerTable($playerName): void
 {
     $db = db_connect();
-    $data = $db->prepare("SELECT * FROM sessions WHERE playerName = :playerName");
+    if (!empty($_GET['sort'])) {
+        $sort = $_GET['sort'];
+        if ($sort === 'score') {
+            $data = $db->prepare("SELECT sessions.*, SUM(hits.score) as totalScore, AVG(hits.score) as averageScore FROM sessions LEFT JOIN hits ON sessions.id = hits.sessionId WHERE playerName = :playerName GROUP BY sessions.id ORDER BY totalScore DESC");
+        } elseif ($sort === 'average') {
+            $data = $db->prepare("SELECT sessions.*, SUM(hits.score) as totalScore, AVG(hits.score) as averageScore FROM sessions LEFT JOIN hits ON sessions.id = hits.sessionId WHERE playerName = :playerName GROUP BY sessions.id ORDER BY averageScore DESC");
+        }
+    } else {
+        $data = $db->prepare("SELECT sessions.*, SUM(hits.score) as totalScore, AVG(hits.score) as averageScore FROM sessions LEFT JOIN hits ON sessions.id = hits.sessionId WHERE playerName = :playerName GROUP BY sessions.id");
+    }
     $data->bindValue(':playerName', $playerName, SQLITE3_TEXT);
     $sessions = [];
     $result = $data->execute();
@@ -223,21 +218,16 @@ function playerTable($playerName): void
     echo "
     <tr>
         <th>Timestamp</th>
-        <th>Hits</th>
         <th>Total Score</th>
         <th>Average Score</th>
-        <th>Average Time Between Hits</th>
         <th>Actions</th>
     </tr>
     ";
     foreach ($sessions as $session) {
-        $hits = json_decode($session['hits'], true);
         echo "<tr>";
         echo "<td>" . htmlspecialchars(date('Y-m-d H:i:s', $session['timestamp'])) . "</td>";
-        echo "<td>" . htmlspecialchars(count($hits ?? []) ?? 0) . "</td>";
-        echo "<td>" . htmlspecialchars(calculateTotalScore($hits)) . "</td>";
-        echo "<td>" . htmlspecialchars(calculateAverageScore($hits)) . "</td>";
-        echo "<td>" . htmlspecialchars(calculateAverageTimeBetweenHits($hits)) . "</td>";
+        echo "<td>" . htmlspecialchars($session['totalScore']) . "</td>";
+        echo "<td>" . htmlspecialchars($session['averageScore']) . "</td>";
         echo "
         <td>
             <a href=\"/session/" . htmlspecialchars($session['id']) . "\">Details</a>
@@ -249,36 +239,45 @@ function playerTable($playerName): void
 function detailTable($sessionId): void
 {
     $db = db_connect();
-    $data = $db->prepare("SELECT * FROM sessions WHERE id = :sessionId");
-    $data->bindValue(':sessionId', $sessionId, SQLITE3_INTEGER);
-    $result = $data->execute();
+    $sessionData = $db->prepare("SELECT sessions.*, SUM(hits.score) as totalScore, AVG(hits.score) as averageScore FROM sessions LEFT JOIN hits ON sessions.id = hits.sessionId WHERE sessions.id = :sessionId");
+    $sessionData->bindValue(':sessionId', $sessionId, SQLITE3_INTEGER);
+    $result = $sessionData->execute();
     $session = $result->fetchArray(SQLITE3_ASSOC);
     if (!$session) {
         echo "<p>No session found with ID: " . htmlspecialchars($sessionId) . "</p>";
         return;
     }
+    // get hits:
+    $hitsData = $db->prepare("SELECT * FROM hits WHERE sessionId = :sessionId");
+    $hitsData->bindValue(':sessionId', $sessionId, SQLITE3_INTEGER);
+    $hitsResult = $hitsData->execute();
+    $hits = [];
+    while ($hit = $hitsResult->fetchArray(SQLITE3_ASSOC)) {
+        $hits[] = $hit;
+    }
+
+    echo "<h2>Session Details</h2>";
+    echo "Amount of Hits: " . count($hits) . "<br>";
+    echo "Total Score: " . htmlspecialchars($session['totalScore']) . "<br>";
+    echo "Average Score: " . htmlspecialchars($session['averageScore']) . "<br>";
 
     echo "<table>";
     echo "
     <tr>
-        <th>HitNr</th>
-        <th>Strength</th>
+        <th>HitID</th>
+        <th>Score</th>
         <th>Time</th>
         <th>Position</th>
     </tr>
     ";
     $counter = 1;
-    $hits = json_decode($session['hits'], true);
     foreach ($hits as $hit) {
-        echo "
-        <tr>
-            <td>" . htmlspecialchars($counter) . "</td>
-            <td>" . htmlspecialchars($hit['strength']) . "</td>
-            <td>" . htmlspecialchars($hit['time']) . "</td>
-            <td>" . htmlspecialchars(json_encode($hit['position'])) . "</td>
-        </tr>
-        ";
-        $counter++;
+        echo "<tr>";
+        echo "<td>" . htmlspecialchars($hit['id']) . "</td>";
+        echo "<td>" . htmlspecialchars($hit['score']) . "</td>";
+        echo "<td>" . htmlspecialchars($hit['time']) . "</td>";
+        echo "<td>" . htmlspecialchars($hit['position']) . "</td>";
+        echo "</tr>";
     }
     echo "</table>";
 }
