@@ -16,7 +16,7 @@ local txtutil = require("libs.txtutil")
 local ui = require("libs.ui")
 local cmd = require("libs.cmd")
 
-local version = "0.1.9"
+local version = "0.2.0"
 
 -- Self Update function
 local function updateSelf()
@@ -253,6 +253,12 @@ local function main()
             end
             sleep(3)
         elseif option == 2 then
+            mon.clear()
+            ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
+            txtutil.writeCentered(mon, math.floor(monH/2), "Please visit this url for a scoreboard:", monW)
+            txtutil.writeCentered(mon, math.floor(monH/2) + 1, "https://example.com/scoreboard", monW)
+            txtutil.writeCentered(mon, math.floor(monH/2) + 2, "This is due to limitations with cc Displays", monW)
+            break
             -- get a session list
             local sessions = getSessionsList()
             if #sessions == 0 then

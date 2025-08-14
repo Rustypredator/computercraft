@@ -7,7 +7,7 @@ os.pullEvent = os.pullEventRaw
 local updater = require("libs.updater")
 updater.updateSelf()
 
-local version = "0.0.5"
+local version = "0.0.6"
 
 -- Self Update function
 local function updateSelf()
@@ -89,7 +89,7 @@ local function main()
         -- Send one message when signal is detected
 
         local strength = redstone.getAnalogInput("top") -- Get the strength of the redstone signal
-        if strength > 1 then
+        if strength > 0 then
             local message = {
                 strength = strength, -- Get the strength of the redstone signal
                 position = pos,
