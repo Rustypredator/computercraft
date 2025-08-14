@@ -18,7 +18,7 @@ local ui = require("libs.ui")
 local cmd = require("libs.cmd")
 local crypt = require("libs.crypt")
 
-local version = "0.2.2"
+local version = "0.2.3"
 
 -- Self Update function
 local function updateSelf()
@@ -148,7 +148,7 @@ local function saveSession(hits, playerName)
     -- try to save the data to the web api:
     -- create a hash to identify myself:
     local secret = getSecret()
-    local hash = crypt.digest(unixTimestamp .. secret)
+    local hash = crypt.sha256(unixTimestamp .. secret)
     local requestData = {
         playerName = playerName,
         timestamp = unixTimestamp,

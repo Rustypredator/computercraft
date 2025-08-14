@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the Crypt library
-local version = "0.0.1"
+local version = "0.0.2"
 
 -- self update function
 local function update()
@@ -222,10 +222,16 @@ local function pbkdf2(pass, salt, iter, dklen)
 	return setmetatable(out, mt)
 end
 
+local function sha256(data)
+	local data = digest(data)
+	return data:toHex()
+end
+
 return {
     version = version,
     update = update,
     digest = digest,
 	hmac   = hmac,
 	pbkdf2 = pbkdf2,
+	sha256 = sha256
 }
