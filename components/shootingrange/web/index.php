@@ -32,13 +32,13 @@ function api_save_validate(): array|bool
     $timestamp = $data['timestamp'];
     $hits = $data['hits'];
     $clientHash = $data['hash'];
+    error_log('Received: ' . json_encode($data));
     // Create secret hash using provided timestamp
     $secretFile = fopen('secret.txt', 'r');
     $serverSecret = fread($secretFile, filesize('secret.txt'));
     fclose($secretFile);
     $timestampInt = intval($timestamp);
     $serverTime = time();
-    error_log('Received: timestamp=' . $timestampInt . ', hash=' . $clientHash . ', secret=' . $serverSecret);
     if (abs($serverTime - $timestampInt) > 5) {
         http_response_code(400);
         echo json_encode(['error' => 'Timestamp out of range']);
@@ -47,6 +47,7 @@ function api_save_validate(): array|bool
     $expectedHash = hash('sha256', $timestampInt . $serverSecret);
     error_log('Expected hash: ' . $expectedHash);
     if ($clientHash !== $expectedHash) {
+        error_log('Hash mismatch.');
         http_response_code(403);
         echo json_encode(['error' => 'Invalid hash']);
         return false;
