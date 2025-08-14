@@ -5,16 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shooting Range Scoreboard</title>
     <style>
+        html {
+            background-color: #181a1b;
+            color: #e8e6e3;
+            font-family: monospace;
+        }
         table {
             border-collapse: collapse;
             width: 100%;
         }
         th, td {
-            border: 1px solid #ddd;
+            border: 1px solid #545b5e;
             padding: 8px;
         }
         th {
-            background-color: #f2f2f2;
+            background-color: #2c2c2cff;
         }
     </style>
 </head>
