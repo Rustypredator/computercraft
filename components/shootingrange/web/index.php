@@ -17,58 +17,60 @@ function db_connect(): SQLite3
     throw new Exception('Failed to connect to database');
 }
 
-function api_save_validate(): bool
+function api_save_validate(): array|bool
 {
     // Validate save request is complete:
     // Required fields: playerName, timestamp, hits, hash
-    if (!isset($_POST['playerName']) || !isset($_POST['timestamp']) || !isset($_POST['hits']) || !isset($_POST['hash'])) {
+    $body = file_get_contents('php://input');
+    $data = json_decode($body, true);
+    if (!isset($data['playerName']) || !isset($data['timestamp']) || !isset($data['hits']) || !isset($data['hash'])) {
         http_response_code(400);
         echo json_encode(['error' => 'Invalid request']);
         return false;
     }
-    $playername = $_POST['playerName'];
-    $timestamp = $_POST['timestamp'];
-    $hits = $_POST['hits'];
-    $clientHash = $_POST['hash'];
+    $playername = $data['playerName'];
+    $timestamp = $data['timestamp'];
+    $hits = $data['hits'];
+    $clientHash = $data['hash'];
     // Create secret hash using provided timestamp
     $secretFile = fopen('secret.txt', 'r');
     $serverSecret = fread($secretFile, filesize('secret.txt'));
     fclose($secretFile);
     $timestampInt = intval($timestamp);
-    $valid = false;
-    // Allow ±5 seconds drift
-    for ($i = -5; $i <= 5; $i++) {
-        $tryTimestamp = $timestampInt + $i;
-        $expectedHash = hash('sha256', $tryTimestamp . $serverSecret);
-        if ($clientHash === $expectedHash) {
-            $valid = true;
-            break;
-        }
+    $serverTime = time();
+    error_log('Received: timestamp=' . $timestampInt . ', hash=' . $clientHash . ', secret=' . $serverSecret);
+    if (abs($serverTime - $timestampInt) > 5) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Timestamp out of range']);
+        return false;
     }
-    if (!$valid) {
+    $expectedHash = hash('sha256', $timestampInt . $serverSecret);
+    error_log('Expected hash: ' . $expectedHash);
+    if ($clientHash !== $expectedHash) {
         http_response_code(403);
         echo json_encode(['error' => 'Invalid hash']);
         return false;
     }
-    return true;
+    return $data;
 }
 
 function api_save(): bool
 {
-    if (!api_save_validate()) {
+    $data = api_save_validate();
+    if (!$data) {
         return false;
     }
     // Clean up playername:
-    $playername = trim($playername); //whitespace
+    $playername = trim($data['playerName']); //whitespace
     $playername = preg_replace('/(\[.*?\])/', '', $playername); // remove anything that is in [] brackets (prefix etc.)
     // Save session to db:
     db_createTable();
     $db = db_connect();
     $stmt = $db->prepare("INSERT INTO sessions (playerName, timestamp, hits) VALUES (:playerName, :timestamp, :hits)");
     $stmt->bindValue(':playerName', $playername, SQLITE3_TEXT);
-    $stmt->bindValue(':timestamp', $timestamp, SQLITE3_TEXT);
-    $stmt->bindValue(':hits', $hits, SQLITE3_TEXT);
-    $result = $stmt->execute();
+    $stmt->bindValue(':timestamp', $data['timestamp'], SQLITE3_TEXT);
+    $stmt->bindValue(':hits', json_encode($data['hits']), SQLITE3_TEXT);
+    $result = (bool)$stmt->execute();
     if (!$result) {
         return false;
     }
