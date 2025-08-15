@@ -18,7 +18,7 @@ local ui = require("libs.ui")
 local cmd = require("libs.cmd")
 local crypt = require("libs.crypt")
 
-local version = "0.2.3"
+local version = "0.2.4"
 
 -- Self Update function
 local function updateSelf()
@@ -118,7 +118,7 @@ local function getSecret()
     return secret
 end
 
-local function saveSession(hits, playerName)
+local function saveSession(hits, playerName, playerUUID)
     print("Saving " .. #hits .. " hits for player: " .. playerName)
     local unixTimestamp = math.floor(os.epoch("utc") / 1000)
     -- save all hits to a file with the current timestamp in json format
@@ -140,6 +140,7 @@ local function saveSession(hits, playerName)
     local data = {
         hits = hits,
         player = playerName,
+        uuid = playerUUID,
         timestamp = unixTimestamp
     }
     local json = textutils.serializeJSON(data)
@@ -151,6 +152,7 @@ local function saveSession(hits, playerName)
     local hash = crypt.sha256(unixTimestamp .. secret)
     local requestData = {
         playerName = playerName,
+        playerUUID = playerUUID,
         timestamp = unixTimestamp,
         hits = hits,
         hash = hash
@@ -249,6 +251,7 @@ local function main()
         if option == 1 then
             -- get nearest player name (should be the one who clicked the monitor)
             local playerName = cmd.getNearestPlayerName("Your Session is starting in 3 seconds, Get ready! (Listen for the Whistle)")
+            local playerUUID = cmd.getNearestPlayerUUID()
             print("Recording all hits for 10 seconds...")
             countdown(mon, 3)
             if speaker then
@@ -259,7 +262,7 @@ local function main()
             if speaker then
                 speaker.playSound("create_things_and_misc:portable_whistle", 1, 1)
             end
-            saveSession(hits, playerName)
+            saveSession(hits, playerName, playerUUID)
             if mon then
                 ui.drawMonitorOuterBox(mon, "", "Shooting Range", "v" .. version)
                 if #hits > 0 then

@@ -30,7 +30,7 @@
 function db_createTable(): void
 {
     $db = new SQLite3('shootingrange.db');
-    $db->exec("CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY, playerName TEXT, timestamp TEXT)");
+    $db->exec("CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY, playerName TEXT, playerUUID TEXT, timestamp TEXT)");
     $db->exec("CREATE TABLE IF NOT EXISTS hits (id INTEGER PRIMARY KEY, sessionId INTEGER, score INTEGER, time TEXT, position TEXT, FOREIGN KEY(sessionId) REFERENCES sessions(id))");
 }
 
@@ -51,12 +51,13 @@ function api_save_validate(): array|bool
     // Required fields: playerName, timestamp, hits, hash
     $body = file_get_contents('php://input');
     $data = json_decode($body, true);
-    if (!isset($data['playerName']) || !isset($data['timestamp']) || !isset($data['hits']) || !isset($data['hash'])) {
+    if (!isset($data['playerName']) || !isset($data['playerUUID']) || !isset($data['timestamp']) || !isset($data['hits']) || !isset($data['hash'])) {
         http_response_code(400);
         echo json_encode(['error' => 'Invalid request']);
         return false;
     }
     $playername = $data['playerName'];
+    $playerUUID = $data['playerUUID'];
     $timestamp = $data['timestamp'];
     $hits = $data['hits'];
     $clientHash = $data['hash'];
@@ -177,7 +178,7 @@ function index_table(): void
     </tr>";
     foreach ($sessions as $session) {
         echo "<tr>";
-        echo "<td><a href=\"/player/" . htmlspecialchars($session['playerName']) . "\">" . htmlspecialchars($session['playerName']) . "</a></td>";
+        echo "<td><a href=\"/player/" . htmlspecialchars($session['playerUUID']) . "\">" . htmlspecialchars($session['playerName']) . "</a></td>";
         echo "<td>" . htmlspecialchars(date('Y-m-d H:i:s', $session['timestamp'])) . "</td>";
         echo "<td>" . htmlspecialchars($session['totalScore']) . "</td>";
         echo "<td>" . htmlspecialchars($session['averageScore']) . "</td>";
@@ -190,20 +191,20 @@ function index_table(): void
     echo "</table>";
 }
 
-function playerTable($playerName): void
+function playerTable($playerUUID): void
 {
     $db = db_connect();
     if (!empty($_GET['sort'])) {
         $sort = $_GET['sort'];
         if ($sort === 'score') {
-            $data = $db->prepare("SELECT sessions.*, SUM(hits.score) as totalScore, AVG(hits.score) as averageScore FROM sessions LEFT JOIN hits ON sessions.id = hits.sessionId WHERE playerName = :playerName GROUP BY sessions.id ORDER BY totalScore DESC");
+            $data = $db->prepare("SELECT sessions.*, SUM(hits.score) as totalScore, AVG(hits.score) as averageScore FROM sessions LEFT JOIN hits ON sessions.id = hits.sessionId WHERE playerUUID = :playerUUID GROUP BY sessions.id ORDER BY totalScore DESC");
         } elseif ($sort === 'average') {
-            $data = $db->prepare("SELECT sessions.*, SUM(hits.score) as totalScore, AVG(hits.score) as averageScore FROM sessions LEFT JOIN hits ON sessions.id = hits.sessionId WHERE playerName = :playerName GROUP BY sessions.id ORDER BY averageScore DESC");
+            $data = $db->prepare("SELECT sessions.*, SUM(hits.score) as totalScore, AVG(hits.score) as averageScore FROM sessions LEFT JOIN hits ON sessions.id = hits.sessionId WHERE playerUUID = :playerUUID GROUP BY sessions.id ORDER BY averageScore DESC");
         }
     } else {
-        $data = $db->prepare("SELECT sessions.*, SUM(hits.score) as totalScore, AVG(hits.score) as averageScore FROM sessions LEFT JOIN hits ON sessions.id = hits.sessionId WHERE playerName = :playerName GROUP BY sessions.id");
+        $data = $db->prepare("SELECT sessions.*, SUM(hits.score) as totalScore, AVG(hits.score) as averageScore FROM sessions LEFT JOIN hits ON sessions.id = hits.sessionId WHERE playerUUID = :playerUUID GROUP BY sessions.id");
     }
-    $data->bindValue(':playerName', $playerName, SQLITE3_TEXT);
+    $data->bindValue(':playerUUID', $playerUUID, SQLITE3_TEXT);
     $sessions = [];
     $result = $data->execute();
     while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
