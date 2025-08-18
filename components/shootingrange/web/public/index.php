@@ -1,30 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shooting Range Scoreboard</title>
-    <style>
-        html {
-            background-color: #181a1b;
-            color: #e8e6e3;
-            font-family: monospace;
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-        }
-        th, td {
-            border: 1px solid #545b5e;
-            padding: 8px;
-        }
-        th {
-            background-color: #2c2c2cff;
-        }
-    </style>
-</head>
-<body>
-
 <?php
 
 function db_createTable(): void
@@ -54,7 +27,7 @@ function api_save_validate(): array|bool
     if (!isset($data['playerName']) || !isset($data['playerUUID']) || !isset($data['timestamp']) || !isset($data['hits']) || !isset($data['hash'])) {
         http_response_code(400);
         echo json_encode(['error' => 'Invalid request']);
-        return false;
+        exit;
     }
     $playername = $data['playerName'];
     $playerUUID = $data['playerUUID'];
@@ -71,15 +44,15 @@ function api_save_validate(): array|bool
     if (abs($serverTime - $timestampInt) > 5) {
         http_response_code(400);
         echo json_encode(['error' => 'Timestamp out of range']);
-        return false;
+        exit;
     }
     $expectedHash = hash('sha256', $timestampInt . $serverSecret);
     error_log('Expected hash: ' . $expectedHash);
     if ($clientHash !== $expectedHash) {
+        http_response_code(400);
         error_log('Hash mismatch.');
-        http_response_code(403);
         echo json_encode(['error' => 'Invalid hash']);
-        return false;
+        exit;
     }
     return $data;
 }
@@ -96,8 +69,9 @@ function api_save(): bool
     // Save session to db:
     db_createTable();
     $db = db_connect();
-    $stmt = $db->prepare("INSERT INTO sessions (playerName, timestamp) VALUES (:playerName, :timestamp)");
+    $stmt = $db->prepare("INSERT INTO sessions (playerName, playerUUID, timestamp) VALUES (:playerName, :playerUUID, :timestamp)");
     $stmt->bindValue(':playerName', $playername, SQLITE3_TEXT);
+    $stmt->bindValue(':playerUUID', $data['playerUUID'], SQLITE3_TEXT);
     $stmt->bindValue(':timestamp', $data['timestamp'], SQLITE3_TEXT);
     $result = (bool)$stmt->execute();
     if (!$result) {
@@ -120,6 +94,34 @@ function api_save(): bool
 
 function htmlHeader($title = 'Scoreboard'): void
 {
+    echo '
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Shooting Range Scoreboard</title>
+        <style>
+            html {
+                background-color: #181a1b;
+                color: #e8e6e3;
+                font-family: monospace;
+            }
+            table {
+                border-collapse: collapse;
+                width: 100%;
+            }
+            th, td {
+                border: 1px solid #545b5e;
+                padding: 8px;
+            }
+            th {
+                background-color: #2c2c2cff;
+            }
+        </style>
+    </head>
+    <body>
+    ';
     echo "<a href=\"/\">All Sessions</a> | <a href=\"/?sort=score\">All Sessions (sorted by total Score)</a> | <a href=\"/?sort=average\">All Sessions (sorted by average Score)</a>";
 
     echo "<h1>Scoreboard</h1>";

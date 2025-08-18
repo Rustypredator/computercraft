@@ -1,0 +1,20 @@
+<table class="pure-table">
+    <thead>
+        <tr>
+            <th>PlayerName</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ($players as $player): ?>
+            <tr>
+                <td><?php echo $player['playerName']; ?></td>
+                <td>
+                    <form action="/player/<?php echo $player['playerUUID']; ?>" method="get" class="pure-form">
+                        <button type="submit" class="pure-button pure-button-primary">View</button>
+                    </form>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+    </tbody>
+</table>

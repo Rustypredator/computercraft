@@ -1,0 +1,24 @@
+<table class="pure-table pure-table-bordered pure-table-striped">
+    <thead>
+        <tr>
+            <th>Player Name</th>
+            <th>Time</th>
+            <th>Hits</th>
+            <th>Score</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ($sessions as $session): ?>
+            <tr>
+                <td><a href="/player/<?= htmlspecialchars($session['playerUUID']) ?>"><?= htmlspecialchars($session['playerName']) ?></a></td>
+                <td><?= htmlspecialchars(date('Y-m-d H:i:s', $session['timestamp'])) ?></td>
+                <td><?= htmlspecialchars($session['hitCount'] ?? 0) ?></td>
+                <td><?= htmlspecialchars($session['totalScore'] ?? 0) ?></td>
+                <td>
+                    <a href="/session/<?= htmlspecialchars($session['id']) ?>" class="pure-button pure-button-primary">View</a>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+    </tbody>
+</table>
