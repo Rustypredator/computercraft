@@ -17,7 +17,15 @@ function router(): void
     if ($method === 'POST' && $path === '/api/save') {
         $a = new Api();
         $a->saveSession();
-    } elseif ($method === 'GET' && ($path === '/' || $path === '/sessions')) {
+    } elseif ($method === 'GET' && $path === '/') {
+        $db = new Database();
+        $sessions = $db->getAllSessions();
+        $players = $db->getDistinctPlayers();
+        $highScore = $db->getHighscoreSession();
+        $averageScore = $db->getAverageScore();
+        $todaysSessions = $db->getTodaysSessions();
+        Render::view('home', ['sessions' => $sessions, 'players' => $players, 'highScore' => $highScore, 'averageScore' => $averageScore, 'todaysSessions' => $todaysSessions]);
+    } elseif ($method === 'GET' && $path === '/sessions') {
         $db = new Database();
         $sessions = $db->getAllSessions();
         Render::view('sessions', ['title' => 'Sessions', 'sessions' => $sessions]);
