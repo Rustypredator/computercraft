@@ -7,7 +7,7 @@ os.pullEvent = os.pullEventRaw
 local updater = require("libs.updater")
 updater.updateSelf()
 
-local version = "0.0.8"
+local version = "0.0.9"
 
 -- Self Update function
 local function updateSelf()
@@ -57,19 +57,19 @@ local function main()
     end
 
     local CHANNEL = 9832
-    local pos = nil
+    local targetNumber = 0
     
-    -- Try to get GPS position
-    print("Getting GPS coordinates...")
-    local x, y, z = gps.locate(5) -- 5 second timeout
-    
-    if x then
-        pos = {x = x, y = y, z = z}
-        print(string.format("Position: %.1f, %.1f, %.1f", x, y, z))
+    -- Get Target number
+    local targetFile = fs.open("target.txt", "r")
+    if targetFile then
+        local line = targetFile.readLine()
+        if line then
+            targetNumber = tonumber(line)
+        end
+        targetFile.close()
     else
-        print("GPS location failed. No GPS network or out of range.")
-        print("Using dummy coordinates.")
-        pos = {x = 0, y = 0, z = 0}
+        print("No target.txt file found. Using default target number 0.")
+        fs.open("target.txt", "w").write("0").close()
     end
 
     -- Find and open the first available modem
@@ -94,7 +94,7 @@ local function main()
         end
         local message = {
             strength = strength, -- Get the strength of the redstone signal
-            position = pos,
+            number = targetNumber,
             time = os.time()
         }
         modem.transmit(CHANNEL, CHANNEL, message)

@@ -18,7 +18,7 @@ local ui = require("libs.ui")
 local cmd = require("libs.cmd")
 local crypt = require("libs.crypt")
 
-local version = "0.2.4"
+local version = "0.2.5"
 
 -- Self Update function
 local function updateSelf()
@@ -164,7 +164,9 @@ local function saveSession(hits, playerName, playerUUID)
     if response and response.getResponseCode() == 200 then
         print("Session saved successfully to the webdb.")
     else
-        print("Error saving session to the webdb.")
+        print("Error saving session to the webdb:")
+        print(response.getResponseCode())
+        print(response.readAll())
     end
     return true
 end
