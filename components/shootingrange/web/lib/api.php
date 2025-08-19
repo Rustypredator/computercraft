@@ -20,8 +20,7 @@ class Api
         foreach ($requiredFields as $field) {
             if (!isset($data[$field])) {
                 http_response_code(400);
-                echo json_encode(['error' => "Missing required field: $field"]);
-                var_dump($data);
+                echo json_encode(['error' => "Missing required field"]);
                 return false;
             }
         }
