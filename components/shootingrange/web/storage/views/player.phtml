@@ -1,9 +1,17 @@
+<h2><b><?= htmlspecialchars($sessions[0]['playerName']) ?>'s</b> Shooting Range Stats</h2>
+<b>Total Sessions:</b> <?= htmlspecialchars(count($sessions)) ?><br/>
+<b>Total Hits:</b> <?= htmlspecialchars(array_sum(array_column($sessions, 'hitCount'))) ?><br/>
+<b>Total Score:</b> <?= htmlspecialchars(array_sum(array_column($sessions, 'totalScore'))) ?><br/>
+<b>Total Average:</b> <?= htmlspecialchars(array_sum(array_column($sessions, 'averageScore')) / count($sessions)) ?>
+<br/><br/>
+<h3>Past Sessions</h3>
 <table class="pure-table pure-table-bordered pure-table-striped">
     <thead>
         <tr>
             <th>Time</th>
             <th>Hits</th>
             <th>Score</th>
+            <th>Average</th>
             <th>Actions</th>
         </tr>
     </thead>
@@ -13,6 +21,7 @@
                 <td><?= htmlspecialchars(date('Y-m-d H:i:s', $session['timestamp'])) ?></td>
                 <td><?= htmlspecialchars($session['hitCount'] ?? 0) ?></td>
                 <td><?= htmlspecialchars($session['totalScore'] ?? 0) ?></td>
+                <td><?= htmlspecialchars($session['averageScore'] ?? 0) ?></td>
                 <td>
                     <a href="/session/<?= htmlspecialchars($session['id']) ?>" class="pure-button pure-button-primary">View</a>
                 </td>
