@@ -2,6 +2,8 @@
 
 class Secret
 {
+    private $secret;
+    
     public function __construct()
     {
         $this->secret = trim(file_get_contents('../storage/secret.txt'));
