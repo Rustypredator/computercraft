@@ -2,44 +2,47 @@
     $hits = $session['hits'] ?? [];
     $session = $session['session'] ?? [];
 ?>
+<br/>
 <div class="pure-g">
     <div class="pure-u-1-2">
-        <b>Player:</b> <?= htmlspecialchars($session['playerName']) ?? 'Unknown' ?><br/>
+        <b>Player:</b> <a href="/player/<?= htmlspecialchars($session['playerUUID']) ?? 'Unknown' ?>"><?= htmlspecialchars($session['playerName']) ?? 'Unknown' ?></a><br/>
         <b>Hits:</b> <?= htmlspecialchars($session['hitCount'] ?? 0) ?><br/>
         <b>Total:</b> <?= htmlspecialchars($session['totalScore'] ?? 0) ?><br/>
         <b>Average:</b> <?= htmlspecialchars($session['averageScore'] ?? 0) ?><br/>
+        <br/>
+        <table class="pure-table pure-table-bordered pure-table-striped">
+            <thead>
+                <tr>
+                    <th>HitID</th>
+                    <th>Score</th>
+                    <th>MC Tick Time</th>
+                    <th>Tick diff</th>
+                    <th>Position</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php $counter = 0; $hitTick = 0; ?>
+                <?php foreach ($hits as $hit): ?>
+                    <tr>
+                        <td><?php echo $hit['id']; ?></td>
+                        <td><?php echo $hit['score']; ?></td>
+                        <td><?php echo $hit['time']; ?></td>
+                        <td>
+                            <?php
+                            if ($counter != 0) {
+                                $hitTick = $hit['time'] - $hits[$counter - 1]['time'];
+                            }
+                            ?>
+                            + <?php echo round($hitTick, 3) ?>
+                        </td>
+                        <td><?php echo $hit['position']; ?></td>
+                    </tr>
+                    <?php $counter++; ?>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
     </div>
     <div class="pure-u-1-2">
-        <img src="/images/sr-overview.png" alt="Shooting Range Overview" style="max-height: 300px;">
+        <img src="/images/sr-overview.png" alt="Shooting Range Overview" class="pure-img"/>
     </div>
-<table class="pure-table pure-table-bordered pure-table-striped">
-    <thead>
-        <tr>
-            <th>HitID</th>
-            <th>Score</th>
-            <th>MC Tick Time</th>
-            <th>Tick diff</th>
-            <th>Position</th>
-        </tr>
-    </thead>
-    <tbody>
-        <?php $counter = 0; $hitTick = 0; ?>
-        <?php foreach ($hits as $hit): ?>
-            <tr>
-                <td><?php echo $hit['id']; ?></td>
-                <td><?php echo $hit['score']; ?></td>
-                <td><?php echo $hit['time']; ?></td>
-                <td>
-                    <?php
-                    if ($counter != 0) {
-                        $hitTick = $hit['time'] - $hits[$counter - 1]['time'];
-                    }
-                    ?>
-                    + <?php echo round($hitTick, 3) ?>
-                </td>
-                <td><?php echo $hit['position']; ?></td>
-            </tr>
-            <?php $counter++; ?>
-        <?php endforeach; ?>
-    </tbody>
-</table>
+</div>
