@@ -24,7 +24,7 @@ Class Database {
         if ($result) {
             $sessionId = $this->db->lastInsertRowID();
             foreach ($hits as $hit) {
-                $this->db->query("INSERT INTO hits (sessionId, score, time, position) VALUES ($sessionId, {$hit['score']}, '{$hit['time']}', '{$hit['position']}')");
+                $this->db->query("INSERT INTO hits (sessionId, score, time, position) VALUES ($sessionId, {$hit['strength']}, '{$hit['time']}', '{$hit['number']}')");
             }
             return true;
         }
@@ -48,10 +48,12 @@ Class Database {
 
     public function getDistinctPlayers(): array
     {
-        $result = $this->db->query("SELECT DISTINCT playerUUID, playerName FROM sessions ORDER BY playerName");
+        $result = $this->db->query("SELECT DISTINCT playerUUID FROM sessions");
         $players = [];
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-            $players[] = $row;
+            // get the playerName:
+            $playerName = $this->db->query("SELECT playerName FROM sessions WHERE playerUUID = '{$row['playerUUID']}' LIMIT 1")->fetchArray(SQLITE3_ASSOC)['playerName'] ?? 'Unknown';
+            $players[] = ['playerUUID' => $row['playerUUID'], 'playerName' => $playerName];
         }
         return $players;
     }
@@ -81,5 +83,32 @@ Class Database {
             $hits[] = $row;
         }
         return ['session' => $session, 'hits' => $hits];
+    }
+
+    public function getHighscoreSession(): array
+    {
+        $result = $this->db->query("SELECT sessions.*, COUNT(hits.id) as hitCount, SUM(hits.score) as totalScore, AVG(hits.score) as averageScore FROM sessions LEFT JOIN hits ON sessions.id = hits.sessionId GROUP BY sessions.id ORDER BY totalScore DESC LIMIT 1");
+        return $result->fetchArray(SQLITE3_ASSOC);
+    }
+
+    public function getAverageScore(): float
+    {
+        $result = $this->db->query("SELECT AVG(totalScore) as averageScore FROM (SELECT SUM(score) as totalScore FROM hits GROUP BY sessionId)");
+        $row = $result->fetchArray(SQLITE3_ASSOC);
+        return (float)($row['averageScore'] ?? 0);
+    }
+
+    public function getTodaysSessions(): array
+    {
+        // Return only games that have the same DAY as today.
+        // Timestamp is a UNIX timestamp.
+        $today = (new DateTime())->setTime(0, 0, 0);
+        $tomorrow = (new DateTime())->setTime(0, 0, 0)->modify('+1 day');
+        $result = $this->db->query("SELECT sessions.*, COUNT(hits.id) as hitCount, SUM(hits.score) as totalScore, AVG(hits.score) as averageScore FROM sessions LEFT JOIN hits ON sessions.id = hits.sessionId WHERE sessions.timestamp >= {$today->getTimestamp()} AND sessions.timestamp < {$tomorrow->getTimestamp()} GROUP BY sessions.id");
+        $games = [];
+        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $games[] = $row;
+        }
+        return $games;
     }
 }
