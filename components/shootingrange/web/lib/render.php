@@ -2,7 +2,7 @@
 
 class Render
 {
-    public static function view($path, $data)
+    public static function view($path, $data = [])
     {
         // Path can contain dots, which need to be replaced with slashes.
         $path = str_replace('.', '/', $path);
