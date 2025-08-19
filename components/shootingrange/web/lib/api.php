@@ -20,11 +20,15 @@ class Api
         foreach ($requiredFields as $field) {
             if (!isset($data[$field])) {
                 http_response_code(400);
-                echo json_encode(['error' => "Missing required field"]);
+                echo json_encode(['error' => "Missing required field: $field"]);
+                var_dump($data);
                 return false;
             }
         }
         // All fields are populated.
+        // Clean up playername:
+        $data['playerName'] = trim($data['playerName']); //whitespace
+        $data['playerName'] = preg_replace('/(\[.*?\])/', '', $data['playerName']); // remove anything that is in [] brackets (prefix etc.)
         // Validate hash:
         $secret = new Secret();
         if (!$secret->validateHash($data['timestamp'], $data['hash'])) {
