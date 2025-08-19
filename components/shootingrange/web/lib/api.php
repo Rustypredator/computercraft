@@ -18,9 +18,9 @@ class Api
         // Check if fields are populated:
         $requiredFields = ['playerName', 'playerUUID', 'timestamp', 'hits', 'hash'];
         foreach ($requiredFields as $field) {
-            if (!isset($data[$field]) || empty($data[$field])) {
+            if (!isset($data[$field])) {
                 http_response_code(400);
-                echo json_encode(['error' => "Missing required field: $field"]);
+                echo json_encode(['error' => "Missing required field"]);
                 return false;
             }
         }
@@ -43,6 +43,8 @@ class Api
             return false;
         }
         // Save the session data:
+        $db = new Database();
+        $db->addSession($data['playerUUID'], $data['playerName'], $data['timestamp'], $data['hits']);
 
         return true;
     }

@@ -18,6 +18,19 @@ Class Database {
         $this->db->exec("CREATE TABLE IF NOT EXISTS hits (id INTEGER PRIMARY KEY, sessionId INTEGER, score INTEGER, time TEXT, position TEXT, FOREIGN KEY(sessionId) REFERENCES sessions(id))");
     }
 
+    public function addSession($playerUUID, $playerName, $timestamp, $hits)
+    {
+        $result = $this->db->query("INSERT INTO sessions (playerUUID, playerName, timestamp) VALUES ('$playerUUID', '$playerName', '$timestamp')");
+        if ($result) {
+            $sessionId = $this->db->lastInsertRowID();
+            foreach ($hits as $hit) {
+                $this->db->query("INSERT INTO hits (sessionId, score, time, position) VALUES ($sessionId, {$hit['score']}, '{$hit['time']}', '{$hit['position']}')");
+            }
+            return true;
+        }
+        return false;
+    }
+
     public function getAllSessions($sortBy = 'timestamp'): array
     {
         $orderBy = match ($sortBy) {
