@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the CMD library
-local version = "0.0.4"
+local version = "0.0.5"
 
 -- self update function
 local function update()
@@ -72,6 +72,14 @@ local function getNearestPlayerUUID()
 		local uuidString = uuidFromIntArray(a0, a1, a2, a3)
         return uuidString
     end
+end
+
+local function tp(player, target)
+    commands.exec("tp " .. player .. " " .. target)
+end
+
+local function tpPos(player, x, y, z)
+    commands.exec("tp " .. player .. " " .. x .. " " .. y .. " " .. z)
 end
 
 return {
