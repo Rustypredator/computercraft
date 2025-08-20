@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the CMD library
-local version = "0.0.6"
+local version = "0.0.7"
 
 -- self update function
 local function update()
@@ -82,11 +82,28 @@ local function tpPos(player, x, y, z)
     commands.exec("tp " .. player .. " " .. x .. " " .. y .. " " .. z)
 end
 
+local function clearPlayerInventory(player)
+    local success, output = commands.exec("clear " .. player)
+    if success then
+        return true
+    end
+    return false
+end
+
+local function getInventory(player)
+    local success, output = commands.exec("data get entity " .. player .. " Inventory")
+    if success and output then
+        return output
+    end
+end
+
 return {
     version = version,
     update = update,
     getNearestPlayerName = getNearestPlayerName,
     getNearestPlayerUUID = getNearestPlayerUUID,
     tp = tp,
-    tpPos = tpPos
+    tpPos = tpPos,
+    clearPlayerInventory = clearPlayerInventory,
+    getInventory = getInventory
 }
