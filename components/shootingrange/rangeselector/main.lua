@@ -13,7 +13,7 @@ updater.updateLib("cmd")
 local menu = require("libs.menu")
 local cmd = require("libs.cmd")
 
-local version = "0.0.2"
+local version = "0.0.3"
 
 -- Self Update function
 local function updateSelf()
@@ -62,10 +62,9 @@ local function main()
         return
     end
 
+    local mon = peripheral.find("monitor")
+
     while true do
-        -- Clear the screen
-        term.clear()
-        term.setCursorPos(1, 1)
         -- Teleport Selection menu:
         local option = menu.monitorSelect(mon, {
                 "1 - FFA",
