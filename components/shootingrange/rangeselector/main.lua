@@ -7,12 +7,13 @@ os.pullEvent = os.pullEventRaw
 local updater = require("libs.updater")
 updater.updateSelf()
 updater.updateLib("menu")
+updater.updateLib("ui")
 updater.updateLib("cmd")
 -- require the libraries
 local menu = require("libs.menu")
 local cmd = require("libs.cmd")
 
-local version = "0.0.1"
+local version = "0.0.2"
 
 -- Self Update function
 local function updateSelf()
