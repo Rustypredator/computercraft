@@ -32,11 +32,14 @@ elseif choice == "2" then
     print("Select Shooting Range component:")
     print("1. Main Computer")
     print("2. Target")
+    print("3. Range Selector")
     local subChoice = io.read()
     if subChoice == "1" then
         url = baseurl .. "/components/shootingrange/main/main.lua"
     elseif subChoice == "2" then
         url = baseurl .. "/components/shootingrange/target/main.lua"
+    elseif subChoice == "3" then
+        url = baseurl .. "/components/shootingrange/rangeselector/main.lua"
     else
         print("Invalid choice. Exiting setup.")
         os.exit(1)
