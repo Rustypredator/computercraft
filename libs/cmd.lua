@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the CMD library
-local version = "0.0.5"
+local version = "0.0.6"
 
 -- self update function
 local function update()
@@ -87,4 +87,6 @@ return {
     update = update,
     getNearestPlayerName = getNearestPlayerName,
     getNearestPlayerUUID = getNearestPlayerUUID,
+    tp = tp,
+    tpPos = tpPos
 }
