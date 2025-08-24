@@ -13,7 +13,7 @@ updater.updateLib("cmd")
 local menu = require("libs.menu")
 local cmd = require("libs.cmd")
 
-local version = "0.0.4"
+local version = "0.0.5"
 
 -- Self Update function
 local function updateSelf()
@@ -72,24 +72,21 @@ local function main()
                 "- Range 3 [FREE]",
                 "- Range 4 [FREE]",
                 "- Range 5 [FREE]",
-                "- Range 6 [FREE]",
-                "- Range 7 [FREE]"
+                "- Range 6 [FREE]"
             }, "Select an option", "Shooting Range", "v" .. version)
         -- Teleport the player to the selected position
         if option == 1 then
             cmd.tpPos("@p", "1381", "64", "-318")
         elseif option == 2 then
-            cmd.tpPos("@p", "1381", "64", "-318")
+            cmd.tpPos("@p", "1381", "64", "-256")
         elseif option == 3 then
-            cmd.tpPos("@p", "1381", "64", "-318")
+            cmd.tpPos("@p", "1381", "64", "-193")
         elseif option == 4 then
-            cmd.tpPos("@p", "1381", "64", "-318")
+            cmd.tpPos("@p", "1381", "64", "-130")
         elseif option == 5 then
-            cmd.tpPos("@p", "1381", "64", "-318")
+            cmd.tpPos("@p", "1381", "64", "-67")
         elseif option == 6 then
-            cmd.tpPos("@p", "1381", "64", "-318")
-        elseif option == 7 then
-            cmd.tpPos("@p", "1381", "64", "-318")
+            cmd.tpPos("@p", "1381", "64", "-4")
         end
     end
 end
