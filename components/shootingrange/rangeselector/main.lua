@@ -13,7 +13,7 @@ updater.updateLib("cmd")
 local menu = require("libs.menu")
 local cmd = require("libs.cmd")
 
-local version = "0.0.3"
+local version = "0.0.4"
 
 -- Self Update function
 local function updateSelf()
@@ -67,13 +67,13 @@ local function main()
     while true do
         -- Teleport Selection menu:
         local option = menu.monitorSelect(mon, {
-                "1 - FFA",
-                "2 - Pistols (WIP)",
-                "3 - SMGs (WIP)",
-                "4 - Shotguns (WIP)",
-                "5 - Snipers (WIP)",
-                "6 - Rifles (WIP)",
-                "7 - Snipers (WIP)"
+                "- Range 1 [FREE]",
+                "- Range 2 [FREE]",
+                "- Range 3 [FREE]",
+                "- Range 4 [FREE]",
+                "- Range 5 [FREE]",
+                "- Range 6 [FREE]",
+                "- Range 7 [FREE]"
             }, "Select an option", "Shooting Range", "v" .. version)
         -- Teleport the player to the selected position
         if option == 1 then
