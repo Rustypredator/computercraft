@@ -7,7 +7,7 @@ os.pullEvent = os.pullEventRaw
 local updater = require("libs.updater")
 updater.updateSelf()
 
-local version = "0.1.1"
+local version = "0.1.2"
 
 -- Self Update function
 local function updateSelf()
@@ -98,6 +98,10 @@ local function main()
     if not modem.isOpen(CHANNEL) then
         modem.open(CHANNEL)
     end
+
+    print("Target Number: " .. targetNumber)
+    print("Sending on channel: " .. CHANNEL)
+
     while true do
         -- Wait for redstone signal ON (rising edge)
         while not redstone.getInput("top") do

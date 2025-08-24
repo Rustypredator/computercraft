@@ -18,7 +18,7 @@ local ui = require("libs.ui")
 local cmd = require("libs.cmd")
 local crypt = require("libs.crypt")
 
-local version = "0.2.7"
+local version = "0.2.8"
 
 -- Self Update function
 local function updateSelf()
@@ -243,6 +243,8 @@ local function main()
         frequencyFile.write("9832")
         frequencyFile.close()
     end
+
+    print("Channel: " .. CHANNEL)
 
     -- Try to find a monitor
     local mon = peripheral.find("monitor")
