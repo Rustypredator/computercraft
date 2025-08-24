@@ -18,7 +18,7 @@ local ui = require("libs.ui")
 local cmd = require("libs.cmd")
 local crypt = require("libs.crypt")
 
-local version = "0.2.8"
+local version = "0.2.9"
 
 -- Self Update function
 local function updateSelf()
@@ -75,20 +75,20 @@ local function countdown(mon, seconds)
     end
 end
 
-local function listeningLoop()
+local function listeningLoop(CHANNEL)
     local timeout = os.startTimer(10) -- record all hits for 10 seconds
     local modem = peripheral.find("modem")
     local hits = {}
     if modem then
-        modem.open(9832) -- Open the modem on channel 9832
-        print("Modem opened on channel 9832. Listening for messages...")
+        modem.open(CHANNEL) -- Open the modem on the specified channel
+        print("Modem opened on channel " .. CHANNEL .. ". Listening for messages...")
     else
         print("Error: No modem found.")
         return {}
     end
     while true do
         local event, param1, param2, param3, param4 = os.pullEvent()
-        if event == "modem_message" and param2 == 9832 then
+        if event == "modem_message" and param2 == CHANNEL then
             local side = param1
             local channel = param2
             local returnChannel = param3
@@ -277,7 +277,7 @@ local function main()
                 speaker.playSound("create_things_and_misc:portable_whistle", 1, 1)
             end
             txtutil.writeCentered(mon, math.floor(monH/2), "Waiting for hits...", monW)
-            local hits = listeningLoop()
+            local hits = listeningLoop(CHANNEL)
             if speaker then
                 speaker.playSound("create_things_and_misc:portable_whistle", 1, 1)
             end
