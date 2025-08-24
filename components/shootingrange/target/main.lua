@@ -7,7 +7,7 @@ os.pullEvent = os.pullEventRaw
 local updater = require("libs.updater")
 updater.updateSelf()
 
-local version = "0.1.0"
+local version = "0.1.1"
 
 -- Self Update function
 local function updateSelf()
@@ -69,7 +69,9 @@ local function main()
         frequencyFile.close()
     else
         print("No frequency.txt file found. Using default frequency 9832.")
-        fs.open("frequency.txt", "w").write("9832").close()
+        local frequencyFile = fs.open("frequency.txt", "w")
+        frequencyFile.write("9832")
+        frequencyFile.close()
     end
 
     -- Get Target number
@@ -82,7 +84,9 @@ local function main()
         targetFile.close()
     else
         print("No target.txt file found. Using default target number 0.")
-        fs.open("target.txt", "w").write("0").close()
+        local targetfile = fs.open("target.txt", "w")
+        targetfile.write("0")
+        targetfile.close()
     end
 
     -- Find and open the first available modem
