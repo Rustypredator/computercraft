@@ -7,7 +7,7 @@ os.pullEvent = os.pullEventRaw
 local updater = require("libs.updater")
 updater.updateSelf()
 
-local version = "0.0.9"
+local version = "0.1.0"
 
 -- Self Update function
 local function updateSelf()
@@ -59,6 +59,19 @@ local function main()
     local CHANNEL = 9832
     local targetNumber = 0
     
+    -- Get Frequency
+    local frequencyFile = fs.open("frequency.txt", "r")
+    if frequencyFile then
+        local line = frequencyFile.readLine()
+        if line then
+            CHANNEL = tonumber(line)
+        end
+        frequencyFile.close()
+    else
+        print("No frequency.txt file found. Using default frequency 9832.")
+        fs.open("frequency.txt", "w").write("9832").close()
+    end
+
     -- Get Target number
     local targetFile = fs.open("target.txt", "r")
     if targetFile then

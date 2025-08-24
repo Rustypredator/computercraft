@@ -18,7 +18,7 @@ local ui = require("libs.ui")
 local cmd = require("libs.cmd")
 local crypt = require("libs.crypt")
 
-local version = "0.2.5"
+local version = "0.2.6"
 
 -- Self Update function
 local function updateSelf()
@@ -228,6 +228,19 @@ local function main()
     end
 
     local CHANNEL = 9832
+
+    -- Get Frequency
+    local frequencyFile = fs.open("frequency.txt", "r")
+    if frequencyFile then
+        local line = frequencyFile.readLine()
+        if line then
+            CHANNEL = tonumber(line)
+        end
+        frequencyFile.close()
+    else
+        print("No frequency.txt file found. Using default frequency 9832.")
+        fs.open("frequency.txt", "w").write("9832").close()
+    end
 
     -- Try to find a monitor
     local mon = peripheral.find("monitor")
