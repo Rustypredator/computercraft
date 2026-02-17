@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the CMD library
-local version = "0.0.7"
+local version = "0.0.8"
 
 -- self update function
 local function update()
@@ -26,8 +26,7 @@ local function getNearestPlayerName(message)
     end
 end
 
--- Converts 4 integers to a UUID string
-function uuidFromIntArray(a0, a1, a2, a3)
+local function uuidFromIntArray(a0, a1, a2, a3)
     local bytes = {}
     local function int32ToBytes(n)
         local b = {}
@@ -74,6 +73,31 @@ local function getNearestPlayerUUID()
     end
 end
 
+local function getAllPlayerUUIDs()
+    local players = {}
+    -- get all players on the server:
+    local success, player_data = commands.exec("list uuids")
+
+    -- check if the command was executed successfully
+    if success and player_data then
+        -- Convert to string if table
+        local output = ""
+        if type(player_data) == "table" then
+            output = table.concat(player_data, "\n")
+        else
+            output = tostring(player_data)
+        end
+        
+        -- Parse player data from format: "PlayerName (UUID)"
+        for player_name, uuid in string.gmatch(output, "([%w_]+)%s+%(([a-f0-9%-]+)%)") do
+            -- add the player name and uuid to the table.
+            table.insert(players, {name = player_name, uuid = uuid})
+        end
+    end
+
+    return players
+end
+
 local function tp(player, target)
     commands.exec("tp " .. player .. " " .. target)
 end
@@ -97,13 +121,42 @@ local function getInventory(player)
     end
 end
 
+local function clone(source1, source2, target)
+    -- Build clone command
+    -- Format: clone <x1> <y1> <z1> <x2> <y2> <z2> <x> <y> <z>
+    local clone_cmd = string.format(
+        "clone %d %d %d %d %d %d %d %d %d",
+        source1.x, source1.y, source1.z,
+        source2.x, source2.y, source2.z,
+        target.x, target.y, target.z
+    )
+    
+    local success = commands.exec(clone_cmd)
+    
+    if success then
+        print("Cloning successful.")
+    else
+        print("Cloning failed. Clone CMD: " .. clone_cmd)
+    end
+    
+    return success
+end
+
+local function message(player_name, message)
+    local cmd = string.format("tellraw %s {\"text\":\"%s\"}", player_name, message)
+    return commands.exec(cmd)
+end
+
 return {
     version = version,
     update = update,
     getNearestPlayerName = getNearestPlayerName,
     getNearestPlayerUUID = getNearestPlayerUUID,
+    getAllPlayerUUIDs = getAllPlayerUUIDs,
     tp = tp,
     tpPos = tpPos,
     clearPlayerInventory = clearPlayerInventory,
-    getInventory = getInventory
+    getInventory = getInventory,
+    clone = clone,
+    message = message
 }
