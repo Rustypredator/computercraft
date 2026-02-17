@@ -3,13 +3,13 @@
 -- updater
 local updater = require("libs.updater")
 updater.updateSelf()
-updater.updateLib("box_drawing")
+updater.updateLib("ui")
 updater.updateLib("menu")
 -- require the libraries
-local bd = require("libs.box_drawing")
+local bd = require("libs.ui")
 local menu = require("libs.menu")
 
-local version = "0.0.6"
+local version = "0.0.7"
 
 -- Self Update function
 local function updateSelf()
@@ -17,6 +17,28 @@ local function updateSelf()
     local versionUrl = "/components/main/version"
     -- update this script
     return updater.update(version, updateUrl, versionUrl, "startup.lua")
+end
+
+local function assignBunker(playerUuid)
+    -- assign the next free bunker to the player with the submitted uuid.
+    -- save to config.
+end
+
+local function teleportToBunker(playerUuid)
+    -- get which bunker is assigned to the player
+    -- teleport them to the coordinates of the bunker.
+end
+
+local function cloneTemplate(areaId)
+    -- get template area
+    -- get the coordinates for the areaId
+    -- clone the template to the new coordinates.
+end
+
+local function mainLoop()
+    -- get playerlist
+    -- if new player, assign them a bunker.
+    -- listen for redstone action, if redstone is detected, teleport nearest player to their bunker.
 end
 
 local function init()
@@ -66,6 +88,9 @@ local function main()
         "Exit"
     }, "Select an option", "VaultGuard Main Menu", "v" .. version)
     print("You selected option: " .. option)
+
+    -- if start server:
+    -- start the main loop
 end
 
 -- Run the main function

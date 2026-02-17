@@ -3,13 +3,13 @@
 -- updater
 local updater = require("libs.updater")
 updater.updateSelf()
-updater.updateLib("box_drawing")
+updater.updateLib("ui")
 updater.updateLib("menu")
 -- require the libraries
-local bd = require("libs.box_drawing")
+local bd = require("libs.ui")
 local menu = require("libs.menu")
 
-local version = "0.0.1"
+local version = "0.0.2"
 
 -- Self Update function
 local function updateSelf()
