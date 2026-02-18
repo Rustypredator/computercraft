@@ -28,7 +28,9 @@ local config = {
     assignArea = {
         min = {x = 0, y = 0, z = 0},
         max = {x = 0, y = 0, z = 0}
-    }
+    },
+    areaStorageFolder = "data/areas/",
+    areaPlayerMapFile = "data/areaPlayerMap.txt"
 }
 
 -- Self Update function
@@ -40,64 +42,135 @@ local function updateSelf()
 end
 
 local Area = {
+    loaded = false,
     id = nil,
     playerUuid = nil,
-    min = {x = nil, y = nil, z = nil},
-    max = {x = nil, y = nil, z = nil},
-    spawn = {x = nil, y = nil, z = nil}
+    -- dynamic data:
+    playermap = nil,
+    min = nil,
+    max = nil,
+    spawn = nil
 }
+
+function Area.loadPlayermap()
+    -- load the file:
+    local file = fs.open(config.areaPlayerMapFile, "r")
+    -- get file content
+    local content = file.readAll()
+    -- deserialize the data
+    local data = textutils.unserialize(content) or {}
+    -- put data in area property
+    Area.playermap = data
+    -- loading done.
+    return true
+end
+
+function Area.savePlayermap()
+    -- serialize data:
+    local data = textutils.serialize({})
+    if Area.playermap ~= nil then
+        data = textutils.serialize(Area.playermap)
+    end
+    -- open file for writing
+    local file = fs.open(config.areaPlayerMapFile, "w")
+    -- write the data
+    file.write(data)
+    -- close the file
+    file.close()
+    -- saving successful
+    return true
+end
+
+function Area.calculateCoordinates()
+    -- calculate the coordinates of this area by multiplying the id with the coordinates and the size of each area i guess...
+    -- this should set the min, max and spawn values for this area dynamically.
+end
 
 function Area.loadData(data)
     Area.id = data.id
     Area.playerUuid = data.playerUuid
-    Area.min = data.min
-    Area.max = data.max
-    Area.spawn = data.spawn
+    Area.calculateCoordinates()
 end
 
 function Area.load(areaId)
     -- Load all data for the specified area
-    file = fs.open("data/areas/" .. areaId .. ".txt", "r")
+    file = fs.open(config.areaStorageFolder .. areaId .. ".txt", "r")
     if file then
         local content = file.readAll()
         file.close()
         if content ~= "" then
             data = textutils.unserialize(content) or {}
             Area.loadData(data)
+            Area.loaded = true
             return true
         end
     end
     return false
 end
 
-function Area.loadFirstUnassigned()
-    -- load the first unassigned area.
+function Area.getFirstUnassignedAreaId()
+    -- check files for gap in numbering (first non-existent file):
+    local free = false
+    local counter = 1
+    while not free do
+        local path = config.areaStorageFolder .. counter .. ".txt"
+        -- if the file doesnt exist, return the counter as this is the first free area id.
+        if not fs.exists(path) then
+            return counter
+        end
+        counter = counter + 1
+    end
     return false
 end
 
-function Area.loadByPlayerUuid(playerUuid)
-    -- load the first area that is assigned to the playerUuid.
+function Area.getAreaIdByPlayerUuid(playerUuid)
+    -- load the playermap:
+    Area.loadPlayermap()
+    -- check the playermap if uuid is already present:
+    if Area.playermap[playerUuid] ~= nil then
+        -- if so, return the assigned area id:
+        return Area.playermap[playerUuid]
+    end
+    -- else return false:
     return false
 end
 
 function Area.save()
-    -- save all data to a file.
-    return false
+    -- assemble data to save:
+    local saveData = {
+        id = Area.id,
+        playerUuid = Area.playerUuid
+    }
+    -- serialize the data:
+    local content = textutils.serialize(saveData)
+    -- write to file:
+    local file = fs.open(config.areaStorageFolder .. Area.id .. ".txt", "w")
+    file.write(content)
+    file.close()
+    return true
 end
 
 function Area.unload()
-    -- Reset area data
-    return false
+    Area.loaded = false
+    Area.id = nil
+    Area.playerUuid = nil
+    Area.playermap = nil
+    Area.min = nil
+    Area.max = nil
+    Area.spawn = nil
+    return true
 end
 
 function Area.assign(playerUuid)
-    -- assign the area to a player.
-    return false
+    -- assign the area to a player:
+    Area.playerUuid = playerUuid
+    return true
 end
 
 function Area.unassign()
     -- unassign the area.
-    return false
+    Area.playerUuid = nil
+    return true
 end
 
 local function cloneTemplateToArea()
@@ -113,14 +186,16 @@ local function checkPlayerList()
 
     for player in players do
         -- check if player.uuid is already assigned an area. if so, skip them.
-        if Area.loadByPlayerUuid(player.uuid) == true then
+        if Area.getAreaIdByPlayerUuid(player.uuid) == true then
             -- player has an area.
             print(player.name .. " Already has an area assigned.")
         else
             -- player does not have an area.
             print(player.name .. " is missing an area, assigning one...")
             -- assign a new area:
-            if Area.loadFirstUnassigned() == true then
+            local areaId = Area.getFirstUnassignedAreaId()
+            if areaId ~= false then
+                Area.load(areaId)
                 if Area.assign(player.uuid) == true then
                     if Area.save() == true then
                         print(player.name .. " Has been assigned to area " .. Area.id)
@@ -143,7 +218,7 @@ end
 
 local function teleportToBunker(player)
     -- Load the Bunker for the player:
-    if Area.loadByPlayerUuid(player.uuid) == true then
+    if Area.getAreaIdByPlayerUuid(player.uuid) == true then
         if cmd.tpPos(player.name, Area.spawnX, Area.spawnY, Area.spawnZ) == true then
             print("Teleported Player to their area.")
         end
