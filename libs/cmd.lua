@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the CMD library
-local version = "0.0.8"
+local version = "0.0.9"
 
 -- self update function
 local function update()
@@ -13,38 +13,37 @@ local function update()
     updater.update(version, url, versionUrl, "libs/cmd.lua")
 end
 
-local function getNearestPlayerName(message)
-    local success, output = commands.exec("tell @p " .. (message or "dont mind me :)"))
-    if success and output and #output > 0 then
-        local name = output[1]:match("You whisper to ([^ ]+):")
-        name = tostring(name)
-        if name and #name > 0 then
-            return name
-        else
-            return "unknown"
-        end
+-- Helper function to safely concatenate output tables
+local function concatOutput(output)
+    if type(output) == "table" then
+        return table.concat(output, "\n")
     end
+    return tostring(output or "")
 end
 
+-- Convert int32 array to UUID string (optimized)
 local function uuidFromIntArray(a0, a1, a2, a3)
-    local bytes = {}
+    -- Handle nil or invalid inputs
+    if not a0 or not a1 or not a2 or not a3 then
+        return nil
+    end
+    
     local function int32ToBytes(n)
         local b = {}
         for i = 3, 0, -1 do
-            b[4 - i] = n / (2^(i*8)) % 256
+            b[4 - i] = math.floor(n / (2^(i*8))) % 256
         end
         return b
     end
 
     -- Pack each int32 into bytes (big-endian)
-    local b0 = int32ToBytes(a0)
-    local b1 = int32ToBytes(a1)
-    local b2 = int32ToBytes(a2)
-    local b3 = int32ToBytes(a3)
-    for i = 1, 4 do table.insert(bytes, b0[i]) end
-    for i = 1, 4 do table.insert(bytes, b1[i]) end
-    for i = 1, 4 do table.insert(bytes, b2[i]) end
-    for i = 1, 4 do table.insert(bytes, b3[i]) end
+    local bytes = {}
+    for _, int in ipairs({a0, a1, a2, a3}) do
+        local b = int32ToBytes(int)
+        for i = 1, 4 do
+            table.insert(bytes, b[i])
+        end
+    end
 
     -- Convert bytes to hex string
     local hex = ""
@@ -62,35 +61,68 @@ local function uuidFromIntArray(a0, a1, a2, a3)
     )
 end
 
+-- Get nearest player name without side effects (avoids tell command)
+local function getNearestPlayerName()
+    local success, output = commands.exec("data get entity @p CustomName")
+    if success and output and #output > 0 then
+        local data = concatOutput(output)
+        local name = data:match('"([^"]+)"')
+        if name and #name > 0 then
+            return name
+        end
+    end
+    -- Fallback: try to get actual name
+    local success2, output2 = commands.exec("list")
+    if success2 and output2 and #output2 > 0 then
+        local data = concatOutput(output2)
+        -- Parse "Player1, Player2" format
+        local first_player = data:match("([%w_]+)")
+        return first_player or nil
+    end
+    return nil
+end
+
+-- Get nearest player UUID
 local function getNearestPlayerUUID()
     local success, output = commands.exec("data get entity @p UUID")
     if success and output and #output > 0 then
-        local uuidInt = output[1]:match("%[I; ([%-0-9, ]+)%]") -- should produce 4 comma separated integers that represent the uuid
-		local a0, a1, a2, a3 = uuidInt:match("([%-0-9]+), ([%-0-9]+), ([%-0-9]+), ([%-0-9]+)")
-        -- convert int uuid into string uuid:
-		local uuidString = uuidFromIntArray(a0, a1, a2, a3)
-        return uuidString
+        local data = concatOutput(output)
+        local uuidInt = data:match("%[I; ([%-0-9, ]+)%]")
+        if uuidInt then
+            local a0, a1, a2, a3 = uuidInt:match("([%-0-9]+), ([%-0-9]+), ([%-0-9]+), ([%-0-9]+)")
+            if a0 and a1 and a2 and a3 then
+                return uuidFromIntArray(tonumber(a0), tonumber(a1), tonumber(a2), tonumber(a3))
+            end
+        end
     end
+    return nil
 end
 
+-- Get UUID for a specific player
+local function getPlayerUUID(player)
+    local success, output = commands.exec("data get entity " .. player .. " UUID")
+    if success and output and #output > 0 then
+        local data = concatOutput(output)
+        local uuidInt = data:match("%[I; ([%-0-9, ]+)%]")
+        if uuidInt then
+            local a0, a1, a2, a3 = uuidInt:match("([%-0-9]+), ([%-0-9]+), ([%-0-9]+), ([%-0-9]+)")
+            if a0 and a1 and a2 and a3 then
+                return uuidFromIntArray(tonumber(a0), tonumber(a1), tonumber(a2), tonumber(a3))
+            end
+        end
+    end
+    return nil
+end
+
+-- Get all players with their UUIDs
 local function getAllPlayerUUIDs()
     local players = {}
-    -- get all players on the server:
     local success, player_data = commands.exec("list uuids")
 
-    -- check if the command was executed successfully
     if success and player_data then
-        -- Convert to string if table
-        local output = ""
-        if type(player_data) == "table" then
-            output = table.concat(player_data, "\n")
-        else
-            output = tostring(player_data)
-        end
-        
+        local output = concatOutput(player_data)
         -- Parse player data from format: "PlayerName (UUID)"
         for player_name, uuid in string.gmatch(output, "([%w_]+)%s+%(([a-f0-9%-]+)%)") do
-            -- add the player name and uuid to the table.
             table.insert(players, {name = player_name, uuid = uuid})
         end
     end
@@ -98,32 +130,105 @@ local function getAllPlayerUUIDs()
     return players
 end
 
-local function tp(player, target)
-    commands.exec("tp " .. player .. " " .. target)
-end
-
-local function tpPos(player, x, y, z)
-    commands.exec("tp " .. player .. " " .. x .. " " .. y .. " " .. z)
-end
-
-local function clearPlayerInventory(player)
-    local success, output = commands.exec("clear " .. player)
-    if success then
-        return true
+-- Get list of all online players
+local function getOnlinePlayers()
+    local players = {}
+    local success, output = commands.exec("list")
+    
+    if success and output and #output > 0 then
+        local data = concatOutput(output)
+        -- Extract player count
+        local count = data:match("(%d+)")
+        if count and tonumber(count) > 0 then
+            -- Parse individual player names
+            for name in string.gmatch(data, "([%w_]+)") do
+                if name ~= "players" and name ~= "online" then
+                    table.insert(players, name)
+                end
+            end
+        end
     end
-    return false
+    
+    return players
 end
 
+-- Teleport player to target player/entity
+local function tp(player, target)
+    return commands.exec("tp " .. player .. " " .. target)
+end
+
+-- Teleport player to coordinates
+local function tpPos(player, x, y, z)
+    return commands.exec("tp " .. player .. " " .. x .. " " .. y .. " " .. z)
+end
+
+-- Teleport player to coordinates with rotation
+local function tpPosRot(player, x, y, z, yaw, pitch)
+    return commands.exec("tp " .. player .. " " .. x .. " " .. y .. " " .. z .. " " .. (yaw or "~") .. " " .. (pitch or "~"))
+end
+
+-- Get player position
+local function getPlayerPos(player)
+    local success, output = commands.exec("data get entity " .. player .. " Pos")
+    if success and output and #output > 0 then
+        local data = concatOutput(output)
+        local x, y, z = data:match("%[([%-0-9.]+)d,([%-0-9.]+)d,([%-0-9.]+)d%]")
+        if x and y and z then
+            return {x = tonumber(x), y = tonumber(y), z = tonumber(z)}
+        end
+    end
+    return nil
+end
+
+-- Clear player inventory
+local function clearPlayerInventory(player)
+    return commands.exec("clear " .. player)
+end
+
+-- Give item to player
+local function giveItem(player, item, count)
+    count = count or 1
+    return commands.exec("give " .. player .. " " .. item .. " " .. count)
+end
+
+-- Get player inventory
 local function getInventory(player)
     local success, output = commands.exec("data get entity " .. player .. " Inventory")
     if success and output then
         return output
     end
+    return nil
 end
 
+-- Kill player
+local function killPlayer(player)
+    return commands.exec("kill " .. player)
+end
+
+-- Set player gamemode
+local function setGamemode(player, gamemode)
+    -- gamemode: survival, creative, adventure, spectator
+    return commands.exec("gamemode " .. gamemode .. " " .. player)
+end
+
+-- Get player health
+local function getPlayerHealth(player)
+    local success, output = commands.exec("data get entity " .. player .. " Health")
+    if success and output and #output > 0 then
+        local data = concatOutput(output)
+        local health = data:match("(%d+%.?%d*)")
+        return health and tonumber(health) or nil
+    end
+    return nil
+end
+
+-- Set player health
+local function setPlayerHealth(player, health)
+    return commands.exec("data modify entity " .. player .. " Health set value " .. health)
+end
+
+-- Clone region
 local function clone(source1, source2, target)
-    -- Build clone command
-    -- Format: clone <x1> <y1> <z1> <x2> <y2> <z2> <x> <y> <z>
     local clone_cmd = string.format(
         "clone %d %d %d %d %d %d %d %d %d",
         source1.x, source1.y, source1.z,
@@ -131,32 +236,128 @@ local function clone(source1, source2, target)
         target.x, target.y, target.z
     )
     
-    local success = commands.exec(clone_cmd)
-    
-    if success then
-        print("Cloning successful.")
-    else
-        print("Cloning failed. Clone CMD: " .. clone_cmd)
-    end
-    
-    return success
+    return commands.exec(clone_cmd)
 end
 
-local function message(player_name, message)
-    local cmd = string.format("tellraw %s {\"text\":\"%s\"}", player_name, message)
+-- Fill region with blocks
+local function fill(pos1, pos2, block, mode)
+    -- mode: replace, destroy, keep, outline, hollow
+    mode = mode or "replace"
+    local cmd = string.format(
+        "fill %d %d %d %d %d %d %s %s",
+        pos1.x, pos1.y, pos1.z,
+        pos2.x, pos2.y, pos2.z,
+        block, mode
+    )
     return commands.exec(cmd)
 end
 
+-- Set a single block
+local function setBlock(pos, block)
+    return commands.exec("setblock " .. pos.x .. " " .. pos.y .. " " .. pos.z .. " " .. block)
+end
+
+-- Send message to player
+local function message(player_name, text)
+    -- Escape quotes in text
+    text = text:gsub('"', '\\"')
+    local cmd = string.format("tellraw %s {\"text\":\"%s\"}", player_name, text)
+    return commands.exec(cmd)
+end
+
+-- Send colored message to player
+local function colorMessage(player_name, text, color)
+    text = text:gsub('"', '\\"')
+    local cmd = string.format("tellraw %s {\"text\":\"%s\",\"color\":\"%s\"}", player_name, text, color)
+    return commands.exec(cmd)
+end
+
+-- Broadcast message to all players
+local function broadcast(text)
+    text = text:gsub('"', '\\"')
+    local cmd = string.format("tellraw @a {\"text\":\"%s\"}", text)
+    return commands.exec(cmd)
+end
+
+-- Ban player
+local function banPlayer(player)
+    return commands.exec("ban " .. player)
+end
+
+-- Unban player
+local function unbanPlayer(player)
+    return commands.exec("pardon " .. player)
+end
+
+-- Execute command as player
+local function executeAs(player, cmd)
+    return commands.exec("execute as " .. player .. " run " .. cmd)
+end
+
+-- Set world time
+local function setTime(time)
+    return commands.exec("time set " .. time)
+end
+
+-- Set weather
+local function setWeather(weather)
+    -- weather: clear, rain, thunder
+    return commands.exec("weather " .. weather)
+end
+
+-- Stop server
+local function stop()
+    return commands.exec("stop")
+end
+
 return {
+    -- Version and updates
     version = version,
     update = update,
+    
+    -- Player info functions
     getNearestPlayerName = getNearestPlayerName,
     getNearestPlayerUUID = getNearestPlayerUUID,
+    getPlayerUUID = getPlayerUUID,
     getAllPlayerUUIDs = getAllPlayerUUIDs,
+    getOnlinePlayers = getOnlinePlayers,
+    getPlayerPos = getPlayerPos,
+    getPlayerHealth = getPlayerHealth,
+    
+    -- Teleport functions
     tp = tp,
     tpPos = tpPos,
+    tpPosRot = tpPosRot,
+    
+    -- Inventory functions
     clearPlayerInventory = clearPlayerInventory,
     getInventory = getInventory,
+    giveItem = giveItem,
+    
+    -- Player manipulation
+    killPlayer = killPlayer,
+    setGamemode = setGamemode,
+    setPlayerHealth = setPlayerHealth,
+    
+    -- World manipulation
     clone = clone,
-    message = message
+    fill = fill,
+    setBlock = setBlock,
+    
+    -- Communication
+    message = message,
+    colorMessage = colorMessage,
+    broadcast = broadcast,
+    
+    -- Server management
+    banPlayer = banPlayer,
+    unbanPlayer = unbanPlayer,
+    executeAs = executeAs,
+    setTime = setTime,
+    setWeather = setWeather,
+    stop = stop,
+    
+    -- Utility functions
+    uuidFromIntArray = uuidFromIntArray,
+    concatOutput = concatOutput
 }
