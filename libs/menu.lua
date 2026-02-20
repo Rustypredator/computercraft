@@ -5,7 +5,7 @@ local updater = require("libs.updater")
 local ui = require("libs.ui")
 
 -- Version of the box drawing library
-local version = "0.0.9"
+local version = "0.1.0"
 
 -- self update function
 local function update()
@@ -43,6 +43,24 @@ local function monitorSelect(monitor, options, prompt, title, subtitle)
             end
         end
     end
+end
+
+local function termSelect(options, prompt)
+    print(prompt .. ":")
+    for i, option in ipairs(options) do
+        print(i .. ". " .. option)
+    end
+    local choice = nil
+    while not choice do
+        local input = io.read()
+        local num = tonumber(input)
+        if num and num >= 1 and num <= #options then
+            choice = num
+        else
+            print("Invalid choice. Please enter a number between 1 and " .. #options)
+        end
+    end
+    return choice
 end
 
 return {

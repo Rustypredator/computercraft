@@ -11,7 +11,7 @@ local ui = require("libs.ui")
 local menu = require("libs.menu")
 local cmd = require("libs.cmd")
 
-local version = "0.0.9"
+local version = "0.1.0"
 
 local config = {
     checkInterval = 100,
@@ -402,15 +402,6 @@ local function main()
         print("Initialization failed. Exiting...")
         return
     end
-
-    --- Main
-    term.clear()
-    local option = menu.termSelect({
-        "Start Server",
-        "Settings",
-        "Exit"
-    }, "Select an option", "VaultGuard Main Menu", "v" .. version)
-    print("You selected option: " .. option)
 
     mainLoop()
 end
