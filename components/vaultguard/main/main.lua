@@ -11,7 +11,7 @@ local ui = require("libs.ui")
 local menu = require("libs.menu")
 local cmd = require("libs.cmd")
 
-local version = "0.1.0"
+local version = "0.1.1"
 
 local config = {
     checkInterval = 100,
@@ -288,19 +288,23 @@ local function checkPlayerList()
             -- assign a new area:
             local areaId = Area.getFirstUnassignedAreaId()
             if areaId ~= false then
-                Area.load(areaId)
-                if Area.assign(player.uuid) == true then
-                    if Area.save() == true then
-                        print(player.name .. " has been assigned to area " .. Area.id)
-                        cmd.message(player.name, "You have been assigned an Area.")
-                        if cloneTemplateToArea() == true then
-                            Area.unload()
+                print("Assigning area " .. areaId .. " to player " .. player.name)
+                if Area.load(areaId) == true then
+                    if Area.assign(player.uuid) == true then
+                        if Area.save() == true then
+                            print(player.name .. " has been assigned to area " .. Area.id)
+                            cmd.message(player.name, "You have been assigned an Area.")
+                            if cloneTemplateToArea() == true then
+                                Area.unload()
+                            end
+                        else
+                            print("Failed to save the area data.")
                         end
                     else
-                        print("Failed to save the area data.")
+                        print(player.name .. " could not be assigned to an area.")
                     end
                 else
-                    print(player.name .. " could not be assigned to an area.")
+                    print("Failed to load area " .. areaId .. " for assignment.")
                 end
             else
                 print("Failed to load an unassigned area, are we maxxed?")
