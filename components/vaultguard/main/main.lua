@@ -11,7 +11,7 @@ local ui = require("libs.ui")
 local menu = require("libs.menu")
 local cmd = require("libs.cmd")
 
-local version = "0.1.1"
+local version = "0.1.2"
 
 local config = {
     checkInterval = 100,
@@ -144,17 +144,44 @@ end
 
 function Area.load(areaId)
     -- Load all data for the specified area
-    local file = fs.open(config.areaStorageFolder .. areaId .. ".txt", "r")
-    if file then
-        local content = file.readAll()
-        file.close()
-        if content ~= "" then
-            local data = textutils.unserialize(content) or {}
-            Area.loadData(data)
-            Area.loaded = true
-            return true
+    local filePath = config.areaStorageFolder .. areaId .. ".txt"
+    
+    if fs.exists(filePath) then
+        -- File exists, load it
+        local file = fs.open(filePath, "r")
+        if file then
+            local content = file.readAll()
+            file.close()
+            if content ~= "" then
+                local data = textutils.unserialize(content) or {}
+                Area.loadData(data)
+                Area.loaded = true
+                return true
+            end
         end
+    else
+        -- File doesn't exist, create it with default values
+        Area.id = areaId
+        Area.playerUuid = nil
+        Area.slices = {}
+        Area.calculateCoordinates()
+        
+        -- Initialize slices as empty (will be populated when assigned)
+        local sliceCount = math.floor((Area.max.y - Area.min.y + 1) / 16)
+        for i = 1, sliceCount do
+            Area.slices[i] = {
+                index = i,
+                yMin = Area.min.y + (i - 1) * 16,
+                yMax = Area.min.y + i * 16 - 1
+            }
+        end
+        
+        -- Save the newly created area
+        Area.loaded = true
+        Area.save()
+        return true
     end
+    
     return false
 end
 
