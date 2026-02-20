@@ -11,28 +11,20 @@ local ui = require("libs.ui")
 local menu = require("libs.menu")
 local cmd = require("libs.cmd")
 
-local version = "0.0.8"
+local version = "0.0.9"
 
 local config = {
     checkInterval = 100,
     redstoneInputSide = "top",
     templates = {
-        {
-            name = "top",
-            position = {
-                min = {x = 0, y = 0, z = 0},
-                max = {x = 0, y = 0, z = 0}
-            }
+        top = {
+            min = {x = 0, y = 0, z = 0},
+            max = {x = 0, y = 0, z = 0}
         },
-        {
-            name = "bottom",
-            position = {
-                min = {x = 0, y = 0, z = 0},
-                max = {x = 0, y = 0, z = 0}
-            }
+        bottom = {
+            min = {x = 0, y = 0, z = 0},
+            max = {x = 0, y = 0, z = 0}
         }
-        min = {x = 0, y = 0, z = 0},
-        max = {x = 0, y = 0, z = 0}
     },
     area = {
         size = 3, -- always squared.
@@ -40,8 +32,8 @@ local config = {
         spawnOffset = {x = 0, y = 0, z = 0},
     },
     assignArea = {
-        min = {x = 0, y = 0, z = 0},
-        max = {x = 0, y = 0, z = 0}
+        min = {x = 0, y = -64, z = 0},
+        max = {x = 0, y = 320, z = 0}
     },
     areaStorageFolder = "data/areas/",
     areaPlayerMapFile = "data/areaPlayerMap.txt"
@@ -60,6 +52,7 @@ local Area = {
     id = nil,
     playerUuid = nil,
     -- dynamic data:
+    slices = nil,
     playermap = nil,
     min = nil,
     max = nil,
@@ -67,19 +60,33 @@ local Area = {
 }
 
 function Area.loadPlayermap()
+    -- Ensure directory exists
+    local dir = string.match(config.areaPlayerMapFile, "^(.*)/")
+    if dir and not fs.exists(dir) then
+        fs.makeDir(dir)
+    end
     -- load the file:
     local file = fs.open(config.areaPlayerMapFile, "r")
-    -- get file content
-    local content = file.readAll()
-    -- deserialize the data
-    local data = textutils.unserialize(content) or {}
-    -- put data in area property
-    Area.playermap = data
+    if file then
+        local content = file.readAll()
+        file.close()
+        -- deserialize the data
+        local data = textutils.unserialize(content) or {}
+        -- put data in area property
+        Area.playermap = data
+    else
+        Area.playermap = {}
+    end
     -- loading done.
     return true
 end
 
 function Area.savePlayermap()
+    -- Ensure directory exists
+    local dir = string.match(config.areaPlayerMapFile, "^(.*)/")
+    if dir and not fs.exists(dir) then
+        fs.makeDir(dir)
+    end
     -- serialize data:
     local data = textutils.serialize({})
     if Area.playermap ~= nil then
@@ -96,24 +103,43 @@ function Area.savePlayermap()
 end
 
 function Area.calculateCoordinates()
-    -- calculate the coordinates of this area by multiplying the id with the coordinates and the size of each area i guess...
-    -- this should set the min, max and spawn values for this area dynamically.
+    -- Calculate coordinates based on area ID, size, and gap
+    -- Each area is positioned in a grid pattern
+    local areaWidth = config.area.size * 16  -- Convert chunks to blocks (16 blocks per chunk)
+    local gapWidth = config.area.gap * 16
+    local totalWidth = areaWidth + gapWidth
+    
+    -- Calculate grid position (columns and rows)
+    local x_start = ((Area.id - 1) % 10) * totalWidth
+    local z_start = math.floor((Area.id - 1) / 10) * totalWidth
+    
+    -- Set area min and max coordinates (assuming y remains constant or defined elsewhere)
+    Area.min = {x = x_start, y = 0, z = z_start}
+    Area.max = {x = x_start + areaWidth - 1, y = 255, z = z_start + areaWidth - 1}
+    
+    -- Calculate spawn position relative to area start + spawnOffset
+    Area.spawn = {
+        x = x_start + config.area.spawnOffset.x,
+        y = config.area.spawnOffset.y,
+        z = z_start + config.area.spawnOffset.z
+    }
 end
 
 function Area.loadData(data)
     Area.id = data.id
     Area.playerUuid = data.playerUuid
+    Area.slices = data.slices
     Area.calculateCoordinates()
 end
 
 function Area.load(areaId)
     -- Load all data for the specified area
-    file = fs.open(config.areaStorageFolder .. areaId .. ".txt", "r")
+    local file = fs.open(config.areaStorageFolder .. areaId .. ".txt", "r")
     if file then
         local content = file.readAll()
         file.close()
         if content ~= "" then
-            data = textutils.unserialize(content) or {}
+            local data = textutils.unserialize(content) or {}
             Area.loadData(data)
             Area.loaded = true
             return true
@@ -145,15 +171,20 @@ function Area.getAreaIdByPlayerUuid(playerUuid)
         -- if so, return the assigned area id:
         return Area.playermap[playerUuid]
     end
-    -- else return false:
-    return false
+    -- else return nil:
+    return nil
 end
 
 function Area.save()
+    -- Ensure directory exists
+    if not fs.exists(config.areaStorageFolder) then
+        fs.makeDir(config.areaStorageFolder)
+    end
     -- assemble data to save:
     local saveData = {
         id = Area.id,
-        playerUuid = Area.playerUuid
+        playerUuid = Area.playerUuid,
+        slices = Area.slices
     }
     -- serialize the data:
     local content = textutils.serialize(saveData)
@@ -168,6 +199,7 @@ function Area.unload()
     Area.loaded = false
     Area.id = nil
     Area.playerUuid = nil
+    Area.slices = nil
     Area.playermap = nil
     Area.min = nil
     Area.max = nil
@@ -178,6 +210,21 @@ end
 function Area.assign(playerUuid)
     -- assign the area to a player:
     Area.playerUuid = playerUuid
+    -- Initialize slices for this area
+    -- Each slice represents a vertical 16-block (1-chunk) layer
+    local sliceCount = math.floor((Area.max.y - Area.min.y + 1) / 16)
+    Area.slices = {}
+    for i = 1, sliceCount do
+        Area.slices[i] = {
+            index = i,
+            yMin = Area.min.y + (i - 1) * 16,
+            yMax = Area.min.y + i * 16 - 1
+        }
+    end
+    -- Update the playermap
+    Area.loadPlayermap()
+    Area.playermap[playerUuid] = Area.id
+    Area.savePlayermap()
     return true
 end
 
@@ -188,21 +235,43 @@ function Area.unassign()
 end
 
 local function cloneTemplateToArea()
-    if cmd.clone(config.templateCoords.min, config.templateCoords.max, Area.min) == true then
-        print("Template clone successful.")
-        return true
+    -- Clone the top template to the top of the area
+    local topTemplateMin = config.templates.top.min
+    local topTemplateMax = config.templates.top.max
+    local topAreaPos = {x = Area.min.x, y = Area.max.y - 15, z = Area.min.z}  -- Top 16 blocks (1 chunk)
+    
+    local success1 = cmd.clone(topTemplateMin, topTemplateMax, topAreaPos)
+    
+    if not success1 then
+        print("Top template clone failed.")
+        return false
     end
-    return false
+    
+    -- Clone the bottom template to the bottom of the area
+    local bottomTemplateMin = config.templates.bottom.min
+    local bottomTemplateMax = config.templates.bottom.max
+    local bottomAreaPos = {x = Area.min.x, y = Area.min.y, z = Area.min.z}  -- Bottom 16 blocks (1 chunk)
+    
+    local success2 = cmd.clone(bottomTemplateMin, bottomTemplateMax, bottomAreaPos)
+    
+    if not success2 then
+        print("Bottom template clone failed.")
+        return false
+    end
+    
+    print("Template clones successful.")
+    return true
 end
 
 local function checkPlayerList()
     local players = cmd.getAllPlayerUUIDs()
 
-    for player in players do
+    for _, player in ipairs(players) do
         -- check if player.uuid is already assigned an area. if so, skip them.
-        if Area.getAreaIdByPlayerUuid(player.uuid) == true then
+        local assignedAreaId = Area.getAreaIdByPlayerUuid(player.uuid)
+        if assignedAreaId ~= nil then
             -- player has an area.
-            print(player.name .. " Already has an area assigned.")
+            print(player.name .. " already has an area assigned (ID: " .. assignedAreaId .. ").")
         else
             -- player does not have an area.
             print(player.name .. " is missing an area, assigning one...")
@@ -212,16 +281,16 @@ local function checkPlayerList()
                 Area.load(areaId)
                 if Area.assign(player.uuid) == true then
                     if Area.save() == true then
-                        print(player.name .. " Has been assigned to area " .. Area.id)
+                        print(player.name .. " has been assigned to area " .. Area.id)
                         cmd.message(player.name, "You have been assigned an Area.")
                         if cloneTemplateToArea() == true then
                             Area.unload()
                         end
                     else
-                        print("Failed to save the area Data.")
+                        print("Failed to save the area data.")
                     end
                 else
-                    print(player.name .. " Could not be assigned to an area.")
+                    print(player.name .. " could not be assigned to an area.")
                 end
             else
                 print("Failed to load an unassigned area, are we maxxed?")
@@ -232,19 +301,31 @@ end
 
 local function teleportToBunker(player)
     -- Load the Bunker for the player:
-    if Area.getAreaIdByPlayerUuid(player.uuid) == true then
-        if cmd.tpPos(player.name, Area.spawnX, Area.spawnY, Area.spawnZ) == true then
-            print("Teleported Player to their area.")
+    local areaId = Area.getAreaIdByPlayerUuid(player.uuid)
+    if areaId ~= nil then
+        -- Load the area to get spawn coordinates
+        if Area.load(areaId) then
+            if cmd.tpPos(player.name, Area.spawn) then
+                print("Teleported " .. player.name .. " to their area.")
+            else
+                print("Failed to teleport " .. player.name .. " to their area.")
+            end
+            Area.unload()
+        else
+            print("Failed to load area " .. areaId .. " for player " .. player.name)
         end
+    else
+        print("Player " .. player.name .. " has no assigned area.")
     end
 end
 
 local function mainLoop()
+    local tick_count = 0
     while true do
-        Tick_count = Tick_count + 1
+        tick_count = tick_count + 1
 
         -- Check for new players periodically
-        if Tick_count % config.checkInterval == 0 then
+        if tick_count % config.checkInterval == 0 then
             checkPlayerList()
         end
 
@@ -253,8 +334,18 @@ local function mainLoop()
         -- You can also check multiple sides
         if redstone.getInput(config.redstoneInputSide) then
             print("[REDSTONE] Signal detected!")
-            -- get nearest playerUuid and teleport them to their bunker.
-            teleportToBunker(cmd.getNearestPlayerUUID())
+            -- get nearest player and teleport them to their bunker.
+            local nearestPlayerName = cmd.getNearestPlayerName()
+            if nearestPlayerName then
+                local nearestPlayerUuid = cmd.getPlayerUUID(nearestPlayerName)
+                if nearestPlayerUuid then
+                    teleportToBunker({name = nearestPlayerName, uuid = nearestPlayerUuid})
+                else
+                    print("Failed to get UUID for nearest player: " .. nearestPlayerName)
+                end
+            else
+                print("No players found nearby.")
+            end
             -- Debounce - wait before checking again
             sleep(0.5)
         end
