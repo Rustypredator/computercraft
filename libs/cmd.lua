@@ -63,21 +63,13 @@ end
 
 -- Get nearest player name without side effects (avoids tell command)
 local function getNearestPlayerName()
-    local success, output = commands.exec("data get entity @p CustomName")
+    local success, output = commands.exec("data get entity @p Name")
     if success and output and #output > 0 then
         local data = concatOutput(output)
         local name = data:match('"([^"]+)"')
         if name and #name > 0 then
             return name
         end
-    end
-    -- Fallback: try to get actual name
-    local success2, output2 = commands.exec("list")
-    if success2 and output2 and #output2 > 0 then
-        local data = concatOutput(output2)
-        -- Parse "Player1, Player2" format
-        local first_player = data:match("([%w_]+)")
-        return first_player or nil
     end
     return nil
 end
@@ -137,14 +129,12 @@ local function getOnlinePlayers()
     
     if success and output and #output > 0 then
         local data = concatOutput(output)
-        -- Extract player count
-        local count = data:match("(%d+)")
-        if count and tonumber(count) > 0 then
-            -- Parse individual player names
-            for name in string.gmatch(data, "([%w_]+)") do
-                if name ~= "players" and name ~= "online" then
-                    table.insert(players, name)
-                end
+        -- Extract the part after "players online: "
+        local players_section = data:match("players online: (.+)")
+        if players_section then
+            -- Split by ", " to get individual player names
+            for name in players_section:gmatch("([%w_]+)") do
+                table.insert(players, name)
             end
         end
     end
