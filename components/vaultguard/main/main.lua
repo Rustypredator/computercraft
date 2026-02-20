@@ -18,12 +18,12 @@ local config = {
     redstoneInputSide = "top",
     templates = {
         top = {
-            min = {x = 0, y = 0, z = 0},
-            max = {x = 0, y = 0, z = 0}
+            min = {x = 29999071, y = 304, z = 29999039},
+            max = {x = 29999024, y = 320, z = 29998992}
         },
         bottom = {
-            min = {x = 0, y = 0, z = 0},
-            max = {x = 0, y = 0, z = 0}
+            min = {x = 29999071, y = 304, z = 29998992},
+            max = {x = 29999024, y = 320, z = 29998944}
         }
     },
     area = {
@@ -32,8 +32,8 @@ local config = {
         spawnOffset = {x = 0, y = 0, z = 0},
     },
     assignArea = {
-        min = {x = 0, y = -64, z = 0},
-        max = {x = 0, y = 320, z = 0}
+        min = {x = -28800000, y = -64, z = -28800000},
+        max = {x = 28800000, y = 320, z = 28800000}
     },
     areaStorageFolder = "data/areas/",
     areaPlayerMapFile = "data/areaPlayerMap.txt"
@@ -109,18 +109,28 @@ function Area.calculateCoordinates()
     local gapWidth = config.area.gap * 16
     local totalWidth = areaWidth + gapWidth
     
-    -- Calculate grid position (columns and rows)
-    local x_start = ((Area.id - 1) % 10) * totalWidth
-    local z_start = math.floor((Area.id - 1) / 10) * totalWidth
+    -- Calculate how many areas fit per row based on assignArea
+    -- assignArea coordinates are inclusive, so width = max - min + 1
+    local assignWidthX = config.assignArea.max.x - config.assignArea.min.x + 1
+    local assignWidthZ = config.assignArea.max.z - config.assignArea.min.z + 1
+    local columnsPerRow = math.floor(assignWidthX / totalWidth)
+    local rowsPerAssign = math.floor(assignWidthZ / totalWidth)
     
-    -- Set area min and max coordinates (assuming y remains constant or defined elsewhere)
-    Area.min = {x = x_start, y = 0, z = z_start}
-    Area.max = {x = x_start + areaWidth - 1, y = 255, z = z_start + areaWidth - 1}
+    -- Calculate grid position (columns and rows) starting from assignArea.min
+    local columnIndex = (Area.id - 1) % columnsPerRow
+    local rowIndex = math.floor((Area.id - 1) / columnsPerRow)
+    
+    local x_start = config.assignArea.min.x + columnIndex * totalWidth
+    local z_start = config.assignArea.min.z + rowIndex * totalWidth
+    
+    -- Set area min and max coordinates
+    Area.min = {x = x_start, y = config.assignArea.min.y, z = z_start}
+    Area.max = {x = x_start + areaWidth - 1, y = config.assignArea.max.y, z = z_start + areaWidth - 1}
     
     -- Calculate spawn position relative to area start + spawnOffset
     Area.spawn = {
         x = x_start + config.area.spawnOffset.x,
-        y = config.area.spawnOffset.y,
+        y = config.assignArea.min.y + config.area.spawnOffset.y,
         z = z_start + config.area.spawnOffset.z
     }
 end
