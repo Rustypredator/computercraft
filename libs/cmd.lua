@@ -158,13 +158,13 @@ local function tp(player, target)
 end
 
 -- Teleport player to coordinates
-local function tpPos(player, x, y, z)
-    return commands.exec("tp " .. player .. " " .. x .. " " .. y .. " " .. z)
+local function tpPos(player, pos)
+    return commands.exec("tp " .. player .. " " .. pos.x .. " " .. pos.y .. " " .. pos.z)
 end
 
 -- Teleport player to coordinates with rotation
-local function tpPosRot(player, x, y, z, yaw, pitch)
-    return commands.exec("tp " .. player .. " " .. x .. " " .. y .. " " .. z .. " " .. (yaw or "~") .. " " .. (pitch or "~"))
+local function tpPosRot(player, pos, yaw, pitch)
+    return commands.exec("tp " .. player .. " " .. pos.x .. " " .. pos.y .. " " .. pos.z .. " " .. (yaw or "~") .. " " .. (pitch or "~"))
 end
 
 -- Get player position
