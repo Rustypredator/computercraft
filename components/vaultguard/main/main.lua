@@ -41,8 +41,8 @@ local config = {
 
 -- Self Update function
 local function updateSelf()
-    local updateUrl = "/components/main/main.lua"
-    local versionUrl = "/components/main/version"
+    local updateUrl = "/components/vaultguard/main/main.lua"
+    local versionUrl = "/components/vaultguard/main/version"
     -- update this script
     return updater.update(version, updateUrl, versionUrl, "startup.lua")
 end
