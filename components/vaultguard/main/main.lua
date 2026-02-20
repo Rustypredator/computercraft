@@ -16,7 +16,21 @@ local version = "0.0.8"
 local config = {
     checkInterval = 100,
     redstoneInputSide = "top",
-    templateCoords = {
+    templates = {
+        {
+            name = "top",
+            position = {
+                min = {x = 0, y = 0, z = 0},
+                max = {x = 0, y = 0, z = 0}
+            }
+        },
+        {
+            name = "bottom",
+            position = {
+                min = {x = 0, y = 0, z = 0},
+                max = {x = 0, y = 0, z = 0}
+            }
+        }
         min = {x = 0, y = 0, z = 0},
         max = {x = 0, y = 0, z = 0}
     },
