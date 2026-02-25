@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the CMD library
-local version = "0.0.9"
+local version = "0.1.0"
 
 -- self update function
 local function update()
