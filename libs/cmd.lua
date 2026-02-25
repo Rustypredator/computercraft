@@ -61,17 +61,17 @@ local function uuidFromIntArray(a0, a1, a2, a3)
     )
 end
 
--- Get nearest player name without side effects (avoids tell command)
-local function getNearestPlayerName()
-    local success, output = commands.exec("data get entity @p Name")
+local function getNearestPlayerName(message)
+    local success, output = commands.exec("tell @p " .. (message or "dont mind me :)"))
     if success and output and #output > 0 then
-        local data = concatOutput(output)
-        local name = data:match('"([^"]+)"')
+        local name = output[1]:match("You whisper to ([^ ]+):")
+        name = tostring(name)
         if name and #name > 0 then
             return name
+        else
+            return "unknown"
         end
     end
-    return nil
 end
 
 -- Get nearest player UUID
