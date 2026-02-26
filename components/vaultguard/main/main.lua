@@ -300,47 +300,7 @@ local function cloneTemplateToArea()
     return true
 end
 
-local function checkPlayerList()
-    local players = cmd.getAllPlayerUUIDs()
-
-    for _, player in ipairs(players) do
-        -- check if player.uuid is already assigned an area. if so, skip them.
-        local assignedAreaId = Area.getAreaIdByPlayerUuid(player.uuid)
-        if assignedAreaId ~= nil then
-            -- player has an area.
-            print(player.name .. " already has an area assigned (ID: " .. assignedAreaId .. ").")
-        else
-            -- player does not have an area.
-            print(player.name .. " is missing an area, assigning one...")
-            -- assign a new area:
-            local areaId = Area.getFirstUnassignedAreaId()
-            if areaId ~= false then
-                print("Assigning area " .. areaId .. " to player " .. player.name)
-                if Area.load(areaId) == true then
-                    if Area.assign(player.uuid) == true then
-                        if Area.save() == true then
-                            print(player.name .. " has been assigned to area " .. Area.id)
-                            cmd.message(player.name, "You have been assigned an Area.")
-                            if cloneTemplateToArea() == true then
-                                Area.unload()
-                            end
-                        else
-                            print("Failed to save the area data.")
-                        end
-                    else
-                        print(player.name .. " could not be assigned to an area.")
-                    end
-                else
-                    print("Failed to load area " .. areaId .. " for assignment.")
-                end
-            else
-                print("Failed to load an unassigned area, are we maxxed?")
-            end
-        end
-    end
-end
-
-local function teleportToBunker(player)
+local function teleportToArea(player)
     -- Load the Bunker for the player:
     local areaId = Area.getAreaIdByPlayerUuid(player.uuid)
     if areaId ~= nil then
@@ -365,24 +325,53 @@ local function mainLoop()
     while true do
         tick_count = tick_count + 1
 
-        -- Check for new players periodically
-        if tick_count % config.checkInterval == 0 then
-            checkPlayerList()
-        end
-
-        -- Check for redstone signal
-        -- Redstone can come from different sides: "top", "bottom", "front", "back", "left", "right"
-        -- You can also check multiple sides
+        -- check for redstone input on the configured side:
         if redstone.getInput(config.redstoneInputSide) then
             print("[REDSTONE] Signal detected!")
-            -- get nearest player and teleport them to their bunker.
+            -- get nearest player
             local nearestPlayerName = cmd.getNearestPlayerName()
             if nearestPlayerName then
                 local nearestPlayerUuid = cmd.getPlayerUUID(nearestPlayerName)
+                -- Check if the player already has an area assigned, if not assign one:
                 if nearestPlayerUuid then
-                    teleportToBunker({name = nearestPlayerName, uuid = nearestPlayerUuid})
+                    local player = {name = nearestPlayerName, uuid = nearestPlayerUuid}
+                    local assignedAreaId = Area.getAreaIdByPlayerUuid(player.uuid)
+                    if assignedAreaId ~= nil then
+                        -- player has an area.
+                        print(player.name .. " already has an area assigned (ID: " .. assignedAreaId .. ").")
+                    else
+                        -- player does not have an area.
+                        print(player.name .. " is missing an area, assigning one...")
+                        -- assign a new area:
+                        local areaId = Area.getFirstUnassignedAreaId()
+                        if areaId ~= false then
+                            print("Assigning area " .. areaId .. " to player " .. player.name)
+                            if Area.load(areaId) == true then
+                                if Area.assign(player.uuid) == true then
+                                    if Area.save() == true then
+                                        print(player.name .. " has been assigned to area " .. Area.id)
+                                        cmd.message(player.name, "You have been assigned an Area, please press the button again.")
+                                        cloneSuccess, cloneOutput = cloneTemplateToArea()
+                                        if cloneSuccess == true then
+                                            Area.unload()
+                                        end
+                                    else
+                                        print("Failed to save the area data.")
+                                    end
+                                else
+                                    print(player.name .. " could not be assigned to an area.")
+                                end
+                            else
+                                print("Failed to load area " .. areaId .. " for assignment.")
+                            end
+                        else
+                            print("Failed to load an unassigned area, are we maxxed?")
+                        end
+                    end
+                    -- Teleport the player to the area:
+                    teleportToArea(player)
                 else
-                    print("Failed to get UUID for nearest player: " .. nearestPlayerName)
+                    print("Failed to get UUID for nearest player: " .. player.name)
                 end
             else
                 print("No players found nearby.")
