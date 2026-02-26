@@ -14,15 +14,12 @@ if choice == "1" then
     -- submenu for VaultGuard
     print("Select VaultGuard component:")
     print("1. Main Server")
-    print("2. Door")
-    print("3. User Terminal")
+    print("2. User Terminal")
     local subChoice = io.read()
     if subChoice == "1" then
         url = baseurl .. "/components/vaultguard/main/main.lua"
     elseif subChoice == "2" then
-        url = baseurl .. "/components/vaultguard/door/main.lua"
-    elseif subChoice == "3" then
-        url = baseurl .. "/components/vaultguard/terminal/main.lua"
+        url = baseurl .. "/components/vaultguard/term/term.lua"
     else
         print("Invalid choice. Exiting setup.")
         os.exit(1)
