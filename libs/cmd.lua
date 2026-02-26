@@ -426,6 +426,73 @@ local function clone(source1, source2, target, cloneMode)
     return allSuccess
 end
 
+------------------------------------------------------------------------
+-- /data command helpers
+------------------------------------------------------------------------
+
+-- Get NBT data from a block at the given position
+-- @param pos: {x, y, z}
+-- @param path: (optional) NBT path, e.g. "Items" or "On"
+-- @return success, output
+local function dataGetBlock(pos, path)
+    local cmd = string.format("data get block %d %d %d", pos.x, pos.y, pos.z)
+    if path then
+        cmd = cmd .. " " .. path
+    end
+    return commands.exec(cmd)
+end
+
+-- Get NBT data from an entity
+-- @param target: entity selector or player name, e.g. "@p" or "Steve"
+-- @param path: (optional) NBT path
+-- @return success, output
+local function dataGetEntity(target, path)
+    local cmd = string.format("data get entity %s", target)
+    if path then
+        cmd = cmd .. " " .. path
+    end
+    return commands.exec(cmd)
+end
+
+-- Merge NBT data into a block
+-- @param pos: {x, y, z}
+-- @param nbt: SNBT string, e.g. '{On:1b}'
+-- @return success, output
+local function dataMergeBlock(pos, nbt)
+    local cmd = string.format("data merge block %d %d %d %s", pos.x, pos.y, pos.z, nbt)
+    return commands.exec(cmd)
+end
+
+-- Merge NBT data into an entity
+-- @param target: entity selector or player name
+-- @param nbt: SNBT string
+-- @return success, output
+local function dataMergeEntity(target, nbt)
+    local cmd = string.format("data merge entity %s %s", target, nbt)
+    return commands.exec(cmd)
+end
+
+-- Modify a specific NBT path on a block
+-- @param pos: {x, y, z}
+-- @param path: NBT path, e.g. "On"
+-- @param action: "set", "append", "prepend", "insert", "merge"
+-- @param value: SNBT value string, e.g. "1b"
+-- @return success, output
+local function dataModifyBlock(pos, path, action, value)
+    local cmd = string.format("data modify block %d %d %d %s %s value %s",
+        pos.x, pos.y, pos.z, path, action, value)
+    return commands.exec(cmd)
+end
+
+-- Remove NBT data from a block
+-- @param pos: {x, y, z}
+-- @param path: NBT path to remove
+-- @return success, output
+local function dataRemoveBlock(pos, path)
+    local cmd = string.format("data remove block %d %d %d %s", pos.x, pos.y, pos.z, path)
+    return commands.exec(cmd)
+end
+
 -- Fill region with blocks
 local function fill(pos1, pos2, block, mode)
     -- mode: replace, destroy, keep, outline, hollow
@@ -548,6 +615,14 @@ return {
     setWeather = setWeather,
     stop = stop,
     
+    -- Data (NBT) commands
+    dataGetBlock = dataGetBlock,
+    dataGetEntity = dataGetEntity,
+    dataMergeBlock = dataMergeBlock,
+    dataMergeEntity = dataMergeEntity,
+    dataModifyBlock = dataModifyBlock,
+    dataRemoveBlock = dataRemoveBlock,
+
     -- Utility functions
     uuidFromIntArray = uuidFromIntArray,
     concatOutput = concatOutput

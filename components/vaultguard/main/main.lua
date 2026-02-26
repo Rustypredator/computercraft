@@ -62,6 +62,21 @@ local function cloneTemplateToArea()
     return true
 end
 
+local function turnOnTerminalComputer()
+    local pos = Area.getTerminalComputerPos()
+    if not pos then
+        print("No terminal computer offset configured.")
+        return false
+    end
+    local success = cmd.dataMergeBlock(pos, "{On:1b}")
+    if success then
+        print("Terminal computer turned on at " .. pos.x .. ", " .. pos.y .. ", " .. pos.z)
+    else
+        print("Failed to turn on terminal computer at " .. pos.x .. ", " .. pos.y .. ", " .. pos.z)
+    end
+    return success
+end
+
 local function teleportToArea(player)
     -- Load the Bunker for the player:
     local areaId = Area.getAreaIdByPlayerUuid(player.uuid)
@@ -73,6 +88,8 @@ local function teleportToArea(player)
             else
                 print("Failed to teleport " .. player.name .. " to their area.")
             end
+            -- Turn on the terminal computer in the area
+            turnOnTerminalComputer()
             Area.unload()
         else
             print("Failed to load area " .. areaId .. " for player " .. player.name)

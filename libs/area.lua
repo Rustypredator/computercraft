@@ -20,7 +20,9 @@ local config = {
             label = "Top Cap",
             cost = 0,
             min = {x = 29999071, y = 304, z = 29999039},
-            max = {x = 29999024, y = 319, z = 29998992}
+            max = {x = 29999024, y = 319, z = 29998992},
+            -- Relative offset from the area min corner to the terminal computer block
+            computerOffset = {x = 24, y = 13, z = 24}
         },
         bottom = {
             label = "Bottom Cap",
@@ -273,6 +275,25 @@ function Area.getSliceFromTop(fromTop)
 end
 
 ------------------------------------------------------------------------
+-- Terminal computer position
+------------------------------------------------------------------------
+
+-- Get the absolute position of the terminal computer in the current area.
+-- Uses the "computerOffset" field from the "top" template config.
+-- @return {x, y, z} or nil if no offset is configured
+function Area.getTerminalComputerPos()
+    if not Area.min then return nil end
+    local topTemplate = config.templates["top"]
+    if not topTemplate or not topTemplate.computerOffset then return nil end
+    local offset = topTemplate.computerOffset
+    return {
+        x = Area.min.x + offset.x,
+        y = Area.min.y + offset.y,
+        z = Area.min.z + offset.z
+    }
+end
+
+------------------------------------------------------------------------
 -- Template cloning
 ------------------------------------------------------------------------
 
@@ -385,6 +406,8 @@ return {
     unassign = Area.unassign,
     -- Slices
     getSliceFromTop = Area.getSliceFromTop,
+    -- Terminal
+    getTerminalComputerPos = Area.getTerminalComputerPos,
     -- Templates
     cloneTemplateToSlice = Area.cloneTemplateToSlice,
     moveSliceDown = Area.moveSliceDown,
