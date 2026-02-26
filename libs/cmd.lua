@@ -4,7 +4,9 @@
 local updater = require("libs.updater")
 
 -- Version of the CMD library
-local version = "0.1.0"
+local version = "0.1.1"
+-- Maximum volume for a single /clone command in Minecraft
+local CLONE_LIMIT = 32768
 
 -- self update function
 local function update()
@@ -217,24 +219,100 @@ local function setPlayerHealth(player, health)
     return commands.exec("data modify entity " .. player .. " Health set value " .. health)
 end
 
--- Clone region
+-- Clone region (auto-chunks if volume exceeds the configured block-limit)
 -- @param source1: {x, y, z} - first corner of the source region
 -- @param source2: {x, y, z} - opposite corner of the source region
--- @param target: {x, y, z} - target position for the cloned region (the cloned region will be placed with its first corner at this position)
+-- @param target: {x, y, z} - target position for the cloned region (lowest-coordinate corner)
 -- @return success boolean
 local function clone(source1, source2, target)
-    local clone_cmd = string.format(
-        "clone %d %d %d %d %d %d %d %d %d",
-        source1.x, source1.y, source1.z,
-        source2.x, source2.y, source2.z,
-        target.x, target.y, target.z
-    )
-    
-    local success, output = commands.exec(clone_cmd)
-    if not success then
-        print("Clone command failed: " .. concatOutput(output))
+    -- Normalize source coordinates to get actual min/max
+    local srcMin = {
+        x = math.min(source1.x, source2.x),
+        y = math.min(source1.y, source2.y),
+        z = math.min(source1.z, source2.z)
+    }
+    local srcMax = {
+        x = math.max(source1.x, source2.x),
+        y = math.max(source1.y, source2.y),
+        z = math.max(source1.z, source2.z)
+    }
+
+    local sizeX = srcMax.x - srcMin.x + 1
+    local sizeY = srcMax.y - srcMin.y + 1
+    local sizeZ = srcMax.z - srcMin.z + 1
+    local volume = sizeX * sizeY * sizeZ
+
+    -- If within the limit, do a single clone
+    if volume <= CLONE_LIMIT then
+        local clone_cmd = string.format(
+            "clone %d %d %d %d %d %d %d %d %d",
+            srcMin.x, srcMin.y, srcMin.z,
+            srcMax.x, srcMax.y, srcMax.z,
+            target.x, target.y, target.z
+        )
+        local success, output = commands.exec(clone_cmd)
+        if not success then
+            print("Clone command failed: " .. concatOutput(output))
+        end
+        return success
     end
-    return success
+
+    -- Volume exceeds limit — split into chunks that fit.
+    -- Reduce chunk sizes along X, then Z, then Y until each chunk is within the limit.
+    local chunkX = sizeX
+    local chunkY = sizeY
+    local chunkZ = sizeZ
+
+    if chunkX * chunkY * chunkZ > CLONE_LIMIT then
+        chunkX = math.floor(CLONE_LIMIT / (chunkY * chunkZ))
+        if chunkX < 1 then chunkX = 1 end
+    end
+    if chunkX * chunkY * chunkZ > CLONE_LIMIT then
+        chunkZ = math.floor(CLONE_LIMIT / (chunkX * chunkY))
+        if chunkZ < 1 then chunkZ = 1 end
+    end
+    if chunkX * chunkY * chunkZ > CLONE_LIMIT then
+        chunkY = math.floor(CLONE_LIMIT / (chunkX * chunkZ))
+        if chunkY < 1 then chunkY = 1 end
+    end
+
+    local allSuccess = true
+    local chunkCount = 0
+
+    for ox = 0, sizeX - 1, chunkX do
+        for oz = 0, sizeZ - 1, chunkZ do
+            for oy = 0, sizeY - 1, chunkY do
+                -- Source sub-region
+                local cx1 = srcMin.x + ox
+                local cy1 = srcMin.y + oy
+                local cz1 = srcMin.z + oz
+                local cx2 = math.min(cx1 + chunkX - 1, srcMax.x)
+                local cy2 = math.min(cy1 + chunkY - 1, srcMax.y)
+                local cz2 = math.min(cz1 + chunkZ - 1, srcMax.z)
+
+                -- Corresponding target position (offset from target origin)
+                local tx = target.x + ox
+                local ty = target.y + oy
+                local tz = target.z + oz
+
+                local clone_cmd = string.format(
+                    "clone %d %d %d %d %d %d %d %d %d",
+                    cx1, cy1, cz1,
+                    cx2, cy2, cz2,
+                    tx, ty, tz
+                )
+                local success, output = commands.exec(clone_cmd)
+                chunkCount = chunkCount + 1
+                if not success then
+                    print("Clone chunk " .. chunkCount .. " failed: " .. concatOutput(output))
+                    allSuccess = false
+                end
+            end
+        end
+    end
+
+    print("Clone completed in " .. chunkCount .. " chunks.")
+    return allSuccess
 end
 
 -- Fill region with blocks
