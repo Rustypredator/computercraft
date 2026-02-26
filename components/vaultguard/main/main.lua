@@ -19,11 +19,11 @@ local config = {
     templates = {
         top = {
             min = {x = 29999071, y = 304, z = 29999039},
-            max = {x = 29999024, y = 320, z = 29998992}
+            max = {x = 29999024, y = 319, z = 29998992}
         },
         bottom = {
             min = {x = 29999071, y = 304, z = 29998992},
-            max = {x = 29999024, y = 320, z = 29998944}
+            max = {x = 29999024, y = 319, z = 29998944}
         }
     },
     area = {
@@ -33,7 +33,7 @@ local config = {
     },
     assignArea = {
         min = {x = -28800000, y = -64, z = -28800000},
-        max = {x = 28800000, y = 320, z = 28800000}
+        max = {x = 28800000, y = 319, z = 28800000}
     },
     areaStorageFolder = "data/areas/",
     areaPlayerMapFile = "data/areaPlayerMap.txt"
