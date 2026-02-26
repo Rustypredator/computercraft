@@ -383,8 +383,10 @@ local function mainLoop()
             else
                 print("No players found nearby.")
             end
-            -- Debounce - wait before checking again
-            sleep(0.5)
+            -- Debounce - wait for signal to go LOW before accepting again
+            while redstone.getInput(config.redstoneInputSide) do
+                sleep(0.1)
+            end
         end
         -- Main loop tick
         sleep(0.1)
