@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the box drawing library
-local version = "0.0.2"
+local version = "0.0.3"
 
 -- self update function
 local function update()
@@ -70,10 +70,39 @@ local function drawMonitorOuterBox(monitor, topLeftLabel, topCenterLabel, topRig
         bottomLeftLabel or "", bottomCenterLabel or "", bottomRightLabel or "")
 end
 
+-- Draw text at a specific position on the monitor
+local function drawMonitorText(monitor, x, y, text, fgColor, bgColor)
+    monitor.setCursorPos(x, y)
+    if fgColor then monitor.setTextColor(fgColor) end
+    if bgColor then monitor.setBackgroundColor(bgColor) end
+    monitor.write(text)
+    monitor.setTextColor(colors.white)
+    monitor.setBackgroundColor(colors.black)
+end
+
+-- Draw centered text on a specific line
+local function drawMonitorCenteredText(monitor, y, text, fgColor, bgColor)
+    local width = monitor.getSize()
+    local x = math.floor((width - #text) / 2) + 1
+    drawMonitorText(monitor, x, y, text, fgColor, bgColor)
+end
+
+-- Clear a rectangular area on the monitor
+local function clearMonitorArea(monitor, x, y, width, height)
+    monitor.setBackgroundColor(colors.black)
+    for row = y, y + height - 1 do
+        monitor.setCursorPos(x, row)
+        monitor.write(string.rep(" ", width))
+    end
+end
+
 return {
     version = version,
     update = update,
     drawMonitorButton = drawMonitorButton,
     drawMonitorBox = drawMonitorBox,
-    drawMonitorOuterBox = drawMonitorOuterBox
+    drawMonitorOuterBox = drawMonitorOuterBox,
+    drawMonitorText = drawMonitorText,
+    drawMonitorCenteredText = drawMonitorCenteredText,
+    clearMonitorArea = clearMonitorArea
 }
