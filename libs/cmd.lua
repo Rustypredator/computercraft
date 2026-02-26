@@ -4,9 +4,17 @@
 local updater = require("libs.updater")
 
 -- Version of the CMD library
-local version = "0.1.2"
+local version = "0.1.3"
 -- Maximum volume for a single /clone command in Minecraft
 local CLONE_LIMIT = 32768
+
+-- Helper function to safely concatenate output tables
+local function concatOutput(output)
+    if type(output) == "table" then
+        return table.concat(output, "\n")
+    end
+    return tostring(output or "")
+end
 
 -- Forceload all chunks covering a block-coordinate region (min to max, X/Z only)
 -- Returns a list of {x, z} chunk coords that were forceloaded, for later removal
@@ -52,14 +60,6 @@ local function update()
     local url = "/libs/cmd.lua"
     local versionUrl = "/libs/cmd.ver"
     updater.update(version, url, versionUrl, "libs/cmd.lua")
-end
-
--- Helper function to safely concatenate output tables
-local function concatOutput(output)
-    if type(output) == "table" then
-        return table.concat(output, "\n")
-    end
-    return tostring(output or "")
 end
 
 -- Convert int32 array to UUID string (optimized)
