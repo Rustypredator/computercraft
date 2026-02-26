@@ -22,8 +22,12 @@ local config = {
             max = {x = 29999024, y = 319, z = 29998992}
         },
         bottom = {
-            min = {x = 29999071, y = 304, z = 29998992},
+            min = {x = 29999071, y = 304, z = 29998991},
             max = {x = 29999024, y = 319, z = 29998944}
+        },
+        cross = {
+            min = {x = 29999023, y = 304, z = 29998039},
+            max = {x = 29998976, y = 319, z = 29998992}
         }
     },
     area = {
@@ -273,31 +277,56 @@ function Area.unassign()
     return true
 end
 
+-- Clone a template into a specific slice (by slice index, 1 = bottom, highest = top)
+-- @param sliceIndex: integer - which slice to clone into
+-- @param templateKey: string - key in config.templates (e.g. "top", "bottom")
+-- @return success boolean
+function Area.cloneTemplateToSlice(sliceIndex, templateKey)
+    local template = config.templates[templateKey]
+    if not template then
+        print("Unknown template: " .. tostring(templateKey))
+        return false
+    end
+    local slice = Area.slices[sliceIndex]
+    if not slice then
+        print("Invalid slice index: " .. tostring(sliceIndex))
+        return false
+    end
+    local targetPos = {x = Area.min.x, y = slice.yMin, z = Area.min.z}
+    local success = cmd.clone(template.min, template.max, targetPos)
+    if not success then
+        print("Clone of template '" .. templateKey .. "' to slice " .. sliceIndex .. " (Y " .. slice.yMin .. "-" .. slice.yMax .. ") failed.")
+    else
+        print("Cloned template '" .. templateKey .. "' to slice " .. sliceIndex .. " (Y " .. slice.yMin .. "-" .. slice.yMax .. ").")
+    end
+    return success
+end
+
+-- Get a slice index counting from the top (1 = topmost slice, 2 = second from top, etc.)
+-- @param fromTop: integer - position from the top (1-based)
+-- @return sliceIndex: integer - the actual slice index (bottom-based)
+function Area.getSliceFromTop(fromTop)
+    if not Area.slices or #Area.slices == 0 then return nil end
+    local index = #Area.slices - fromTop + 1
+    if index < 1 or index > #Area.slices then return nil end
+    return index
+end
+
 local function cloneTemplateToArea()
-    -- Clone the top template to the top of the area
-    local topTemplateMin = config.templates.top.min
-    local topTemplateMax = config.templates.top.max
-    local topAreaPos = {x = Area.min.x, y = Area.max.y - 15, z = Area.min.z}  -- Top 16 blocks (1 chunk)
-    
-    local topSuccess = cmd.clone(topTemplateMin, topTemplateMax, topAreaPos)
-    
+    -- Clone the top template into the topmost slice
+    local topSlice = Area.getSliceFromTop(1)
+    local topSuccess = Area.cloneTemplateToSlice(topSlice, "top")
     if not topSuccess then
-        print("Top template clone failed.")
         return false
     end
-    
-    -- Clone the bottom template to the bottom of the area
-    local bottomTemplateMin = config.templates.bottom.min
-    local bottomTemplateMax = config.templates.bottom.max
-    local bottomAreaPos = {x = Area.min.x, y = Area.min.y, z = Area.min.z}  -- Bottom 16 blocks (1 chunk)
-    
-    local bottomSuccess = cmd.clone(bottomTemplateMin, bottomTemplateMax, bottomAreaPos)
-    
+
+    -- Clone the bottom template into the second slice from the top
+    local bottomSlice = Area.getSliceFromTop(2)
+    local bottomSuccess = Area.cloneTemplateToSlice(bottomSlice, "bottom")
     if not bottomSuccess then
-        print("Bottom template clone failed.")
         return false
     end
-    
+
     print("Template clones successful.")
     return true
 end
