@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the CMD library
-local version = "0.1.5"
+local version = "0.1.6"
 -- Maximum volume for a single /clone command in Minecraft
 local CLONE_LIMIT = 32768
 
@@ -315,8 +315,9 @@ end
 -- @param source1: {x, y, z} - first corner of the source region
 -- @param source2: {x, y, z} - opposite corner of the source region
 -- @param target: {x, y, z} - target position for the cloned region (lowest-coordinate corner)
+-- @param cloneMode: (optional) "force", "move", or "normal" — appended to /clone as 'replace <mode>'
 -- @return success boolean
-local function clone(source1, source2, target)
+local function clone(source1, source2, target, cloneMode)
     -- Normalize source coordinates to get actual min/max
     local srcMin = {
         x = math.min(source1.x, source2.x),
@@ -341,6 +342,9 @@ local function clone(source1, source2, target)
     local srcLoaded = forceloadRegion(srcMin, srcMax)
     local tgtLoaded = forceloadRegion(tgtMin, tgtMax)
 
+    -- Build clone mode suffix (e.g. " replace force")
+    local modeSuffix = cloneMode and (" replace " .. cloneMode) or ""
+
     local volume = sizeX * sizeY * sizeZ
 
     -- If within the limit, do a single clone
@@ -350,7 +354,7 @@ local function clone(source1, source2, target)
             srcMin.x, srcMin.y, srcMin.z,
             srcMax.x, srcMax.y, srcMax.z,
             target.x, target.y, target.z
-        )
+        ) .. modeSuffix
         local success, output = commands.exec(clone_cmd)
         if not success then
             print("Clone command failed: " .. concatOutput(output))
@@ -404,7 +408,7 @@ local function clone(source1, source2, target)
                     cx1, cy1, cz1,
                     cx2, cy2, cz2,
                     tx, ty, tz
-                )
+                ) .. modeSuffix
                 local success, output = commands.exec(clone_cmd)
                 chunkCount = chunkCount + 1
                 if not success then

@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 local cmd = require("libs.cmd")
 
-local version = "0.0.2"
+local version = "0.0.3"
 
 -- self update function
 local function update()
@@ -35,7 +35,7 @@ local config = {
             max = {x = 29998976, y = 319, z = 29998992}
         }
     },
-    availableTemplates = {"bottom", "cross"},
+    availableTemplates = {"cross"},
     currencyItem = "minecraft:diamond",
     area = {
         size = 3, -- always squared (in chunks)
@@ -342,17 +342,20 @@ function Area.shiftDownAndInsert(fromTopIndex, templateKey)
         return false
     end
 
-    -- Shift from bottom up to avoid overwriting
-    for i = 2, targetSlice do
-        local success = Area.moveSliceDown(i)
-        if not success then
-            print("Shift failed at slice " .. i)
-            return false
-        end
+    -- Shift the entire region (slices 2..targetSlice) down by one slice in a single clone.
+    -- Uses 'force' mode because source and destination regions overlap vertically.
+    local srcMin = {x = Area.min.x, y = Area.slices[2].yMin, z = Area.min.z}
+    local srcMax = {x = Area.max.x, y = Area.slices[targetSlice].yMax, z = Area.max.z}
+    local dstPos = {x = Area.min.x, y = Area.slices[1].yMin, z = Area.min.z}
+
+    local success = cmd.clone(srcMin, srcMax, dstPos, "force")
+    if not success then
+        print("Shift down failed.")
+        return false
     end
 
     -- Clone the template into the freed slot
-    local success = Area.cloneTemplateToSlice(targetSlice, templateKey)
+    success = Area.cloneTemplateToSlice(targetSlice, templateKey)
     if not success then
         print("Failed to clone template into freed slot.")
         return false
