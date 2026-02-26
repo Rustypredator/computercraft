@@ -15,7 +15,7 @@ local menu = require("libs.menu")
 local cmd = require("libs.cmd")
 local netprotocol = require("libs.netprotocol")
 
-local version = "0.0.4"
+local version = "0.0.5"
 
 -- VaultGuard-specific network protocol config
 local Actions = {
@@ -401,6 +401,7 @@ local function showMainMenu(mon, player)
             "Area Info",
             "View Slices",
             "Add Template",
+            "Restart & Update",
             "Exit"
         }, "Welcome, " .. player.name, "VaultGuard", "v" .. version)
 
@@ -411,6 +412,9 @@ local function showMainMenu(mon, player)
         elseif choice == 3 then
             showAddTemplate(mon, player)
         elseif choice == 4 then
+            menu.monitorStatus(mon, "Rebooting terminal...\nThe system will check for\nupdates on restart.", "Restarting", 2)
+            os.reboot()
+        elseif choice == 5 then
             return
         end
     end
