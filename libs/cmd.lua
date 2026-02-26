@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the CMD library
-local version = "0.1.4"
+local version = "0.1.5"
 -- Maximum volume for a single /clone command in Minecraft
 local CLONE_LIMIT = 32768
 
@@ -238,6 +238,35 @@ end
 -- Clear player inventory
 local function clearPlayerInventory(player)
     return commands.exec("clear " .. player)
+end
+
+-- Count how many of a specific item a player has in their inventory.
+-- Uses /clear with maxCount 0 which removes nothing but reports the count.
+-- @param player: player name
+-- @param item: item id (e.g. "minecraft:diamond")
+-- @return number  the count of matching items, or 0
+local function countItem(player, item)
+    local success, output = commands.exec("clear " .. player .. " " .. item .. " 0")
+    if success and output and #output > 0 then
+        local data = concatOutput(output)
+        -- Output format: "Found X matching items on player <name>"
+        local count = data:match("Found (%d+)")
+        if count then
+            return tonumber(count)
+        end
+    end
+    return 0
+end
+
+-- Remove a specific number of items from a player's inventory.
+-- @param player: player name
+-- @param item: item id (e.g. "minecraft:diamond")
+-- @param count: number of items to remove
+-- @return boolean success
+local function clearItem(player, item, count)
+    count = count or 1
+    local success, output = commands.exec("clear " .. player .. " " .. item .. " " .. count)
+    return success
 end
 
 -- Give item to player
@@ -485,6 +514,8 @@ return {
     
     -- Inventory functions
     clearPlayerInventory = clearPlayerInventory,
+    countItem = countItem,
+    clearItem = clearItem,
     getInventory = getInventory,
     giveItem = giveItem,
     

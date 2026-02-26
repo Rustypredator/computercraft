@@ -15,7 +15,7 @@ local menu = require("libs.menu")
 local cmd = require("libs.cmd")
 local netprotocol = require("libs.netprotocol")
 
-local version = "0.0.3"
+local version = "0.0.4"
 
 -- VaultGuard-specific network protocol config
 local Actions = {
@@ -23,6 +23,7 @@ local Actions = {
     GET_AREA_BY_PLAYER     = "getAreaByPlayer",
     GET_AREA_INFO          = "getAreaInfo",
     GET_CONFIG             = "getConfig",
+    CHECK_BALANCE          = "checkBalance",
     ADD_TEMPLATE           = "addTemplate",
     CLONE_TEMPLATE_TO_AREA = "cloneTemplateToArea",
 }
@@ -168,6 +169,118 @@ local function showAreaInfo(mon, player)
 end
 
 ------------------------------------------------------------------------
+-- Screen: View Slices
+------------------------------------------------------------------------
+
+local function showViewSlices(mon, player)
+    -- Get area ID from server
+    local resp = serverRequest(Actions.GET_AREA_BY_PLAYER, {uuid = player.uuid})
+    if not resp or not resp.success then
+        menu.monitorStatus(mon, "Server unreachable.", "Connection Error")
+        return
+    end
+
+    local areaId = resp.data.areaId
+    if not areaId then
+        menu.monitorStatus(mon, "You have no area assigned.", "No Area")
+        return
+    end
+
+    -- Get area details with slice data
+    local infoResp = serverRequest(Actions.GET_AREA_INFO, {areaId = areaId})
+    if not infoResp or not infoResp.success then
+        menu.monitorStatus(mon, "Failed to load area data.", "Error")
+        return
+    end
+
+    -- Get config for template labels
+    local cfgResp = serverRequest(Actions.GET_CONFIG, {})
+    local templates = (cfgResp and cfgResp.success and cfgResp.data.templates) or {}
+
+    local info = infoResp.data
+    local slices = info.slices
+    local width, height = mon.getSize()
+
+    -- Pagination
+    local maxRows = height - 5  -- header (2) + column header (1) + footer (2)
+    local page = 1
+    local totalPages = math.max(1, math.ceil(#slices / maxRows))
+
+    while true do
+        mon.clear()
+        ui.drawMonitorOuterBox(mon, "", "Your Slices", "", "", "", "v" .. version)
+
+        -- Column headers
+        ui.drawMonitorText(mon, 3, 3, "#", colors.lightGray)
+        ui.drawMonitorText(mon, 6, 3, "Template", colors.lightGray)
+        ui.drawMonitorText(mon, math.floor(width * 0.6), 3, "Y Range", colors.lightGray)
+
+        -- Display slices top-to-bottom (highest index first)
+        local startIdx = (page - 1) * maxRows
+        local row = 0
+        for i = #slices, 1, -1 do
+            local displayIdx = #slices - i  -- 0 for top, 1 for next, etc.
+            if displayIdx >= startIdx and row < maxRows then
+                local slice = slices[i]
+                local y = 4 + row
+                local fromTop = #slices - i + 1
+
+                -- Slice number (from top)
+                ui.drawMonitorText(mon, 3, y, tostring(fromTop), colors.white)
+
+                -- Template label or "Empty"
+                local label = "Empty"
+                local labelColor = colors.gray
+                if slice.templateKey then
+                    local tmpl = templates[slice.templateKey]
+                    label = tmpl and tmpl.label or slice.templateKey
+                    labelColor = colors.cyan
+                end
+                ui.drawMonitorText(mon, 6, y, label, labelColor)
+
+                -- Y range
+                ui.drawMonitorText(mon, math.floor(width * 0.6), y,
+                    slice.yMin .. "-" .. slice.yMax, colors.lightGray)
+
+                row = row + 1
+            end
+        end
+
+        -- Footer: page info + back button
+        local footerY = height - 1
+        if totalPages > 1 then
+            local pageText = "Page " .. page .. "/" .. totalPages
+            ui.drawMonitorCenteredText(mon, footerY, pageText, colors.lightGray)
+
+            -- Prev/next areas
+            if page > 1 then
+                ui.drawMonitorText(mon, 3, footerY, "< Prev", colors.yellow)
+            end
+            if page < totalPages then
+                ui.drawMonitorText(mon, width - 7, footerY, "Next >", colors.yellow)
+            end
+        end
+
+        ui.drawMonitorButton(mon, 3, height, width - 4, 1, colors.gray, colors.white, "< Back")
+
+        while true do
+            local event, side, x, touchY = os.pullEvent("monitor_touch")
+            if touchY == height then
+                return
+            elseif touchY == footerY and totalPages > 1 then
+                if x < width / 2 and page > 1 then
+                    page = page - 1
+                    break
+                elseif x >= width / 2 and page < totalPages then
+                    page = page + 1
+                    break
+                end
+            end
+        end
+    end
+end
+
+------------------------------------------------------------------------
 -- Screen: Add Template
 ------------------------------------------------------------------------
 
@@ -197,7 +310,7 @@ local function showAddTemplate(mon, player)
         return
     end
 
-    -- Get available templates from server
+    -- Get available templates and currency from server
     local cfgResp = serverRequest(Actions.GET_CONFIG, {})
     if not cfgResp or not cfgResp.success then
         menu.monitorStatus(mon, "Failed to get server config.", "Error")
@@ -206,40 +319,68 @@ local function showAddTemplate(mon, player)
 
     local templates = cfgResp.data.templates
     local available = cfgResp.data.availableTemplates
+    local currencyItem = cfgResp.data.currencyItem or "minecraft:diamond"
 
-    -- Build options list
+    -- Get player's current balance
+    local balResp = serverRequest(Actions.CHECK_BALANCE, {playerName = player.name})
+    local balance = (balResp and balResp.success and balResp.data.balance) or 0
+
+    -- Derive a short currency display name from the item id
+    local currencyName = currencyItem:match(":(.+)") or currencyItem
+    currencyName = currencyName:gsub("_", " ")
+
+    -- Build options list with cost display
     local optionNames = {}
     local optionKeys  = {}
+    local optionCosts = {}
     for _, key in ipairs(available) do
         local tmpl = templates[key]
         if tmpl then
-            table.insert(optionNames, tmpl.label or key)
+            local cost = tmpl.cost or 0
+            local label = tmpl.label or key
+            if cost > 0 then
+                label = label .. "  [" .. cost .. " " .. currencyName .. "]"
+            else
+                label = label .. "  [Free]"
+            end
+            table.insert(optionNames, label)
             table.insert(optionKeys, key)
+            table.insert(optionCosts, cost)
         end
     end
     table.insert(optionNames, "< Back")
 
-    local choice = menu.monitorSelect(mon, optionNames, "Select a template", "Add Template", "v" .. version)
+    local choice = menu.monitorSelect(mon, optionNames,
+        "Balance: " .. balance .. " " .. currencyName,
+        "Add Template", "v" .. version)
 
     if choice == #optionNames then
         return
     end
 
     local selectedKey   = optionKeys[choice]
-    local selectedLabel = optionNames[choice]
+    local selectedLabel = (templates[selectedKey].label or selectedKey)
+    local selectedCost  = optionCosts[choice]
 
-    local confirmed = menu.monitorConfirm(mon, "Add '" .. selectedLabel .. "'?", "Confirm")
+    -- Show cost in confirmation
+    local confirmMsg = "Add '" .. selectedLabel .. "'?"
+    if selectedCost > 0 then
+        confirmMsg = confirmMsg .. "\nCost: " .. selectedCost .. " " .. currencyName
+    end
+
+    local confirmed = menu.monitorConfirm(mon, confirmMsg, "Confirm")
     if not confirmed then
         return
     end
 
     menu.monitorStatus(mon, "Shifting sections down\nand cloning template...\nPlease wait.", "Working...", 1)
 
-    -- Tell the server to do the actual clone work
+    -- Tell the server to do the actual clone work (server handles payment)
     local addResp = serverRequest(Actions.ADD_TEMPLATE, {
         areaId       = areaId,
         templateKey  = selectedKey,
         fromTopIndex = 2,
+        playerName   = player.name,
     })
 
     if addResp and addResp.success then
@@ -258,6 +399,7 @@ local function showMainMenu(mon, player)
     while true do
         local choice = menu.monitorSelect(mon, {
             "Area Info",
+            "View Slices",
             "Add Template",
             "Exit"
         }, "Welcome, " .. player.name, "VaultGuard", "v" .. version)
@@ -265,8 +407,10 @@ local function showMainMenu(mon, player)
         if choice == 1 then
             showAreaInfo(mon, player)
         elseif choice == 2 then
-            showAddTemplate(mon, player)
+            showViewSlices(mon, player)
         elseif choice == 3 then
+            showAddTemplate(mon, player)
+        elseif choice == 4 then
             return
         end
     end

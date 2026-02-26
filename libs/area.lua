@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 local cmd = require("libs.cmd")
 
-local version = "0.0.1"
+local version = "0.0.2"
 
 -- self update function
 local function update()
@@ -18,21 +18,25 @@ local config = {
     templates = {
         top = {
             label = "Top Cap",
+            cost = 0,
             min = {x = 29999071, y = 304, z = 29999039},
             max = {x = 29999024, y = 319, z = 29998992}
         },
         bottom = {
             label = "Bottom Cap",
+            cost = 0,
             min = {x = 29999071, y = 304, z = 29998991},
             max = {x = 29999024, y = 319, z = 29998944}
         },
         cross = {
             label = "Crossroads",
+            cost = 5,
             min = {x = 29999023, y = 304, z = 29998039},
             max = {x = 29998976, y = 319, z = 29998992}
         }
     },
     availableTemplates = {"bottom", "cross"},
+    currencyItem = "minecraft:diamond",
     area = {
         size = 3, -- always squared (in chunks)
         gap = 1,
@@ -292,6 +296,8 @@ function Area.cloneTemplateToSlice(sliceIndex, templateKey)
     if not success then
         print("Clone of '" .. templateKey .. "' to slice " .. sliceIndex .. " (Y " .. slice.yMin .. "-" .. slice.yMax .. ") failed.")
     else
+        -- Record which template was placed in this slice
+        slice.templateKey = templateKey
         print("Cloned '" .. templateKey .. "' to slice " .. sliceIndex .. " (Y " .. slice.yMin .. "-" .. slice.yMax .. ").")
     end
     return success

@@ -11,7 +11,7 @@ local cmd = require("libs.cmd")
 local Area = require("libs.area")
 local netprotocol = require("libs.netprotocol")
 
-local version = "0.1.4"
+local version = "0.1.5"
 
 -- VaultGuard-specific network protocol config
 local Actions = {
@@ -19,6 +19,7 @@ local Actions = {
     GET_AREA_BY_PLAYER     = "getAreaByPlayer",
     GET_AREA_INFO          = "getAreaInfo",
     GET_CONFIG             = "getConfig",
+    CHECK_BALANCE          = "checkBalance",
     ADD_TEMPLATE           = "addTemplate",
     CLONE_TEMPLATE_TO_AREA = "cloneTemplateToArea",
 }
@@ -117,9 +118,34 @@ local function handleNetworkRequest(senderId, request)
         net.sendResponse(senderId, net.buildResponse(action, {
             templates          = cfg.templates,
             availableTemplates = cfg.availableTemplates,
+            currencyItem       = cfg.currencyItem,
         }))
 
+    elseif action == Actions.CHECK_BALANCE then
+        local count = cmd.countItem(data.playerName, Area.getConfig().currencyItem)
+        net.sendResponse(senderId, net.buildResponse(action, {balance = count}))
+
     elseif action == Actions.ADD_TEMPLATE then
+        -- Validate template exists and get cost
+        local cfg = Area.getConfig()
+        local template = cfg.templates[data.templateKey]
+        if not template then
+            net.sendResponse(senderId, net.buildError(action, "Unknown template."))
+            return
+        end
+
+        local cost = template.cost or 0
+
+        -- Check if player can afford it
+        if cost > 0 and data.playerName then
+            local balance = cmd.countItem(data.playerName, cfg.currencyItem)
+            if balance < cost then
+                net.sendResponse(senderId, net.buildError(action,
+                    "Not enough items. Need " .. cost .. ", have " .. balance .. "."))
+                return
+            end
+        end
+
         if Area.load(data.areaId) then
             if #Area._state.slices < 3 then
                 Area.unload()
@@ -133,6 +159,10 @@ local function handleNetworkRequest(senderId, request)
             end
             Area.unload()
             if success then
+                -- Charge the player
+                if cost > 0 and data.playerName then
+                    cmd.clearItem(data.playerName, cfg.currencyItem, cost)
+                end
                 net.sendResponse(senderId, net.buildResponse(action, {success = true}))
             else
                 net.sendResponse(senderId, net.buildError(action, "Failed to add template."))
