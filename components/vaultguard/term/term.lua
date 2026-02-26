@@ -1,5 +1,6 @@
 -- VaultGuard Terminal Control Center
--- Provides a monitor-based interface for players to manage their area.
+-- Thin client that communicates with the main server via Rednet.
+-- The main server MUST be running for this terminal to function.
 
 -- updater
 local updater = require("libs.updater")
@@ -7,14 +8,33 @@ updater.updateSelf()
 updater.updateLib("ui")
 updater.updateLib("menu")
 updater.updateLib("cmd")
-updater.updateLib("area")
+updater.updateLib("netprotocol")
 -- require the libraries
 local ui = require("libs.ui")
 local menu = require("libs.menu")
 local cmd = require("libs.cmd")
-local Area = require("libs.area")
+local netprotocol = require("libs.netprotocol")
 
-local version = "0.0.2"
+local version = "0.0.3"
+
+-- VaultGuard-specific network protocol config
+local Actions = {
+    PING                   = "ping",
+    GET_AREA_BY_PLAYER     = "getAreaByPlayer",
+    GET_AREA_INFO          = "getAreaInfo",
+    GET_CONFIG             = "getConfig",
+    ADD_TEMPLATE           = "addTemplate",
+    CLONE_TEMPLATE_TO_AREA = "cloneTemplateToArea",
+}
+
+local net = netprotocol.create({
+    protocol = "vaultguard",
+    hostname = "vaultguard-server",
+    timeout  = 5,
+})
+
+local serverId = nil
+local monitor = nil
 
 -- Self Update function
 local function updateSelf()
@@ -26,7 +46,6 @@ end
 ------------------------------------------------------------------------
 -- Monitor detection
 ------------------------------------------------------------------------
-local monitor = nil
 
 local function findMonitor()
     local sides = {"top", "bottom", "left", "right", "front", "back"}
@@ -43,8 +62,44 @@ local function findMonitor()
 end
 
 ------------------------------------------------------------------------
--- Player identification
+-- Server connection
 ------------------------------------------------------------------------
+
+local function connectToServer()
+    serverId = net.findServer()
+    if not serverId then
+        return false
+    end
+    -- Ping to verify
+    local response = net.sendRequest(serverId, Actions.PING, {})
+    if response and response.success then
+        return true
+    end
+    serverId = nil
+    return false
+end
+
+--- Send a request, auto-reconnecting once on failure.
+local function serverRequest(action, data)
+    if not serverId then
+        if not connectToServer() then
+            return nil
+        end
+    end
+    local response = net.sendRequest(serverId, action, data)
+    if not response then
+        -- Retry once after reconnecting
+        if connectToServer() then
+            response = net.sendRequest(serverId, action, data)
+        end
+    end
+    return response
+end
+
+------------------------------------------------------------------------
+-- Player identification (local command computer operation)
+------------------------------------------------------------------------
+
 local function identifyPlayer()
     local name = cmd.getNearestPlayerName("Welcome to VaultGuard Terminal")
     if not name or name == "unknown" then
@@ -60,18 +115,29 @@ end
 ------------------------------------------------------------------------
 -- Screen: Area Info
 ------------------------------------------------------------------------
+
 local function showAreaInfo(mon, player)
-    local areaId = Area.getAreaIdByPlayerUuid(player.uuid)
+    -- Ask server for area ID
+    local resp = serverRequest(Actions.GET_AREA_BY_PLAYER, {uuid = player.uuid})
+    if not resp or not resp.success then
+        menu.monitorStatus(mon, "Server unreachable.\nIs the main server running?", "Connection Error")
+        return
+    end
+
+    local areaId = resp.data.areaId
     if not areaId then
         menu.monitorStatus(mon, "You have no area assigned.\nPlease use the main terminal\nto get an area first.", "No Area")
         return
     end
 
-    if not Area.load(areaId) then
-        menu.monitorStatus(mon, "Failed to load area data.", "Error")
+    -- Ask server for area details
+    local infoResp = serverRequest(Actions.GET_AREA_INFO, {areaId = areaId})
+    if not infoResp or not infoResp.success then
+        menu.monitorStatus(mon, "Failed to load area data.\n" .. (infoResp and infoResp.error or "Server unreachable."), "Error")
         return
     end
 
+    local info = infoResp.data
     local width, height = mon.getSize()
     mon.clear()
     ui.drawMonitorOuterBox(mon, "", "Area Info", "", "", "", "v" .. version)
@@ -79,21 +145,19 @@ local function showAreaInfo(mon, player)
     local y = 3
     ui.drawMonitorText(mon, 3, y, "Player: " .. player.name, colors.yellow)
     y = y + 1
-    ui.drawMonitorText(mon, 3, y, "Area ID: " .. Area._state.id)
+    ui.drawMonitorText(mon, 3, y, "Area ID: " .. info.id)
     y = y + 1
-    ui.drawMonitorText(mon, 3, y, "Slices: " .. #Area._state.slices)
+    ui.drawMonitorText(mon, 3, y, "Slices: " .. #info.slices)
     y = y + 1
-    ui.drawMonitorText(mon, 3, y, "Min: " .. Area._state.min.x .. ", " .. Area._state.min.y .. ", " .. Area._state.min.z)
+    ui.drawMonitorText(mon, 3, y, "Min: " .. info.min.x .. ", " .. info.min.y .. ", " .. info.min.z)
     y = y + 1
-    ui.drawMonitorText(mon, 3, y, "Max: " .. Area._state.max.x .. ", " .. Area._state.max.y .. ", " .. Area._state.max.z)
+    ui.drawMonitorText(mon, 3, y, "Max: " .. info.max.x .. ", " .. info.max.y .. ", " .. info.max.z)
     y = y + 1
-    ui.drawMonitorText(mon, 3, y, "Spawn: " .. Area._state.spawn.x .. ", " .. Area._state.spawn.y .. ", " .. Area._state.spawn.z)
+    ui.drawMonitorText(mon, 3, y, "Spawn: " .. info.spawn.x .. ", " .. info.spawn.y .. ", " .. info.spawn.z)
 
     -- Back button
     y = height - 1
     ui.drawMonitorButton(mon, 3, y, width - 4, 1, colors.gray, colors.white, "< Back")
-
-    Area.unload()
 
     while true do
         local event, side, x, touchY = os.pullEvent("monitor_touch")
@@ -106,33 +170,48 @@ end
 ------------------------------------------------------------------------
 -- Screen: Add Template
 ------------------------------------------------------------------------
+
 local function showAddTemplate(mon, player)
-    local areaId = Area.getAreaIdByPlayerUuid(player.uuid)
+    -- Get area ID from server
+    local resp = serverRequest(Actions.GET_AREA_BY_PLAYER, {uuid = player.uuid})
+    if not resp or not resp.success then
+        menu.monitorStatus(mon, "Server unreachable.", "Connection Error")
+        return
+    end
+
+    local areaId = resp.data.areaId
     if not areaId then
         menu.monitorStatus(mon, "You have no area assigned.\nPlease use the main terminal\nto get an area first.", "No Area")
         return
     end
 
-    if not Area.load(areaId) then
+    -- Get area info to check slice count
+    local infoResp = serverRequest(Actions.GET_AREA_INFO, {areaId = areaId})
+    if not infoResp or not infoResp.success then
         menu.monitorStatus(mon, "Failed to load area data.", "Error")
         return
     end
 
-    -- Need at least 3 slices (top cap + new template + at least 1 below to shift into)
-    if #Area._state.slices < 3 then
+    if #infoResp.data.slices < 3 then
         menu.monitorStatus(mon, "Not enough vertical space\nto add more templates.", "No Room")
-        Area.unload()
         return
     end
 
-    Area.unload()
+    -- Get available templates from server
+    local cfgResp = serverRequest(Actions.GET_CONFIG, {})
+    if not cfgResp or not cfgResp.success then
+        menu.monitorStatus(mon, "Failed to get server config.", "Error")
+        return
+    end
 
-    -- Build options list from available templates
-    local areaConfig = Area.getConfig()
+    local templates = cfgResp.data.templates
+    local available = cfgResp.data.availableTemplates
+
+    -- Build options list
     local optionNames = {}
-    local optionKeys = {}
-    for _, key in ipairs(areaConfig.availableTemplates) do
-        local tmpl = areaConfig.templates[key]
+    local optionKeys  = {}
+    for _, key in ipairs(available) do
+        local tmpl = templates[key]
         if tmpl then
             table.insert(optionNames, tmpl.label or key)
             table.insert(optionKeys, key)
@@ -146,7 +225,7 @@ local function showAddTemplate(mon, player)
         return
     end
 
-    local selectedKey = optionKeys[choice]
+    local selectedKey   = optionKeys[choice]
     local selectedLabel = optionNames[choice]
 
     local confirmed = menu.monitorConfirm(mon, "Add '" .. selectedLabel .. "'?", "Confirm")
@@ -154,29 +233,27 @@ local function showAddTemplate(mon, player)
         return
     end
 
-    if not Area.load(areaId) then
-        menu.monitorStatus(mon, "Failed to load area data.", "Error")
-        return
-    end
-
     menu.monitorStatus(mon, "Shifting sections down\nand cloning template...\nPlease wait.", "Working...", 1)
 
-    -- Insert at slot 2 from top (right below the top cap)
-    local success = Area.shiftDownAndInsert(2, selectedKey)
+    -- Tell the server to do the actual clone work
+    local addResp = serverRequest(Actions.ADD_TEMPLATE, {
+        areaId       = areaId,
+        templateKey  = selectedKey,
+        fromTopIndex = 2,
+    })
 
-    if success then
-        Area.save()
-        Area.unload()
+    if addResp and addResp.success then
         menu.monitorStatus(mon, "Template '" .. selectedLabel .. "'\nhas been added to your area!", "Success")
     else
-        Area.unload()
-        menu.monitorStatus(mon, "Failed to add template.\nCheck the server console.", "Error")
+        local errMsg = (addResp and addResp.error) or "Server unreachable."
+        menu.monitorStatus(mon, "Failed to add template.\n" .. errMsg, "Error")
     end
 end
 
 ------------------------------------------------------------------------
 -- Main Menu
 ------------------------------------------------------------------------
+
 local function showMainMenu(mon, player)
     while true do
         local choice = menu.monitorSelect(mon, {
@@ -198,6 +275,7 @@ end
 ------------------------------------------------------------------------
 -- Initialization & Main Loop
 ------------------------------------------------------------------------
+
 local function init()
     term.clear()
     term.setCursorPos(1, 1)
@@ -235,12 +313,32 @@ local function init()
     print(" -> Monitor found.")
     monitor.setTextScale(0.5)
 
-    -- Verify command computer
+    -- Verify command computer (needed for player identification)
     if not commands then
         print("ERROR: This is not a command computer!")
+        print("Player identification requires a command computer.")
         return false
     end
     print(" -> Command computer OK.")
+
+    -- Open modem for Rednet
+    local modemSide = netprotocol.openModem()
+    if not modemSide then
+        print("ERROR: No modem found!")
+        print("Attach a modem to connect to the server.")
+        return false
+    end
+    print(" -> Modem opened on: " .. modemSide)
+
+    -- Try connecting to the server
+    print(" -> Looking for VaultGuard server...")
+    if connectToServer() then
+        print(" -> Connected to server (ID: " .. serverId .. ")")
+    else
+        print("WARNING: Server not found!")
+        print("  -> The main server must be running.")
+        print("  -> Will retry when needed.")
+    end
 
     return true
 end
@@ -251,19 +349,38 @@ local function mainLoop()
         monitor.clear()
         ui.drawMonitorOuterBox(monitor, "", "VaultGuard", "", "", "", "v" .. version)
         local _, monHeight = monitor.getSize()
-        ui.drawMonitorCenteredText(monitor, math.floor(monHeight / 2), "Tap to begin", colors.lightGray)
+
+        -- Show connection status
+        if serverId then
+            ui.drawMonitorCenteredText(monitor, math.floor(monHeight / 2) - 1, "Connected to server", colors.green)
+        else
+            ui.drawMonitorCenteredText(monitor, math.floor(monHeight / 2) - 1, "Server offline", colors.red)
+        end
+        ui.drawMonitorCenteredText(monitor, math.floor(monHeight / 2) + 1, "Tap to begin", colors.lightGray)
 
         -- Wait for touch to start session
         os.pullEvent("monitor_touch")
 
-        -- Identify nearest player
-        local player = identifyPlayer()
-        if player then
-            print("Session started for: " .. player.name)
-            showMainMenu(monitor, player)
-            print("Session ended for: " .. player.name)
-        else
-            menu.monitorStatus(monitor, "Could not identify player.\nPlease stand closer and\ntry again.", "Error", 3)
+        -- Try connecting if not connected
+        local canProceed = true
+        if not serverId then
+            menu.monitorStatus(monitor, "Connecting to server...", "Please wait", 1)
+            if not connectToServer() then
+                menu.monitorStatus(monitor, "Could not reach the server.\nMake sure the main server\nis running and try again.", "Connection Error", 3)
+                canProceed = false
+            end
+        end
+
+        if canProceed then
+            -- Identify nearest player
+            local player = identifyPlayer()
+            if player then
+                print("Session started for: " .. player.name)
+                showMainMenu(monitor, player)
+                print("Session ended for: " .. player.name)
+            else
+                menu.monitorStatus(monitor, "Could not identify player.\nPlease stand closer and\ntry again.", "Error", 3)
+            end
         end
 
         sleep(1)

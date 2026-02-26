@@ -5,11 +5,29 @@ local updater = require("libs.updater")
 updater.updateSelf()
 updater.updateLib("cmd")
 updater.updateLib("area")
+updater.updateLib("netprotocol")
 -- require the libraries
 local cmd = require("libs.cmd")
 local Area = require("libs.area")
+local netprotocol = require("libs.netprotocol")
 
-local version = "0.1.3"
+local version = "0.1.4"
+
+-- VaultGuard-specific network protocol config
+local Actions = {
+    PING                   = "ping",
+    GET_AREA_BY_PLAYER     = "getAreaByPlayer",
+    GET_AREA_INFO          = "getAreaInfo",
+    GET_CONFIG             = "getConfig",
+    ADD_TEMPLATE           = "addTemplate",
+    CLONE_TEMPLATE_TO_AREA = "cloneTemplateToArea",
+}
+
+local net = netprotocol.create({
+    protocol = "vaultguard",
+    hostname = "vaultguard-server",
+    timeout  = 5,
+})
 
 local config = {
     checkInterval = 100,
@@ -62,6 +80,104 @@ local function teleportToArea(player)
         print("Player " .. player.name .. " has no assigned area.")
     end
 end
+
+------------------------------------------------------------------------
+-- Network request handler
+------------------------------------------------------------------------
+
+local function handleNetworkRequest(senderId, request)
+    local action = request.action
+    local data = request.data or {}
+
+    if action == Actions.PING then
+        net.sendResponse(senderId, net.buildResponse(action, {online = true}))
+
+    elseif action == Actions.GET_AREA_BY_PLAYER then
+        local areaId = Area.getAreaIdByPlayerUuid(data.uuid)
+        net.sendResponse(senderId, net.buildResponse(action, {areaId = areaId}))
+
+    elseif action == Actions.GET_AREA_INFO then
+        if Area.load(data.areaId) then
+            local info = {
+                id         = Area._state.id,
+                playerUuid = Area._state.playerUuid,
+                slices     = Area._state.slices,
+                min        = Area._state.min,
+                max        = Area._state.max,
+                spawn      = Area._state.spawn,
+            }
+            Area.unload()
+            net.sendResponse(senderId, net.buildResponse(action, info))
+        else
+            net.sendResponse(senderId, net.buildError(action, "Failed to load area " .. tostring(data.areaId)))
+        end
+
+    elseif action == Actions.GET_CONFIG then
+        local cfg = Area.getConfig()
+        net.sendResponse(senderId, net.buildResponse(action, {
+            templates          = cfg.templates,
+            availableTemplates = cfg.availableTemplates,
+        }))
+
+    elseif action == Actions.ADD_TEMPLATE then
+        if Area.load(data.areaId) then
+            if #Area._state.slices < 3 then
+                Area.unload()
+                net.sendResponse(senderId, net.buildError(action, "Not enough vertical space to add more templates."))
+                return
+            end
+            local fromTop = data.fromTopIndex or 2
+            local success = Area.shiftDownAndInsert(fromTop, data.templateKey)
+            if success then
+                Area.save()
+            end
+            Area.unload()
+            if success then
+                net.sendResponse(senderId, net.buildResponse(action, {success = true}))
+            else
+                net.sendResponse(senderId, net.buildError(action, "Failed to add template."))
+            end
+        else
+            net.sendResponse(senderId, net.buildError(action, "Failed to load area " .. tostring(data.areaId)))
+        end
+
+    elseif action == Actions.CLONE_TEMPLATE_TO_AREA then
+        if Area.load(data.areaId) then
+            local success = cloneTemplateToArea()
+            if success then Area.save() end
+            Area.unload()
+            if success then
+                net.sendResponse(senderId, net.buildResponse(action, {success = true}))
+            else
+                net.sendResponse(senderId, net.buildError(action, "Clone failed."))
+            end
+        else
+            net.sendResponse(senderId, net.buildError(action, "Failed to load area " .. tostring(data.areaId)))
+        end
+
+    else
+        net.sendResponse(senderId, net.buildError(action, "Unknown action: " .. tostring(action)))
+    end
+end
+
+------------------------------------------------------------------------
+-- Network listener loop
+------------------------------------------------------------------------
+
+local function networkLoop()
+    print("[NET] Network listener started.")
+    while true do
+        local senderId, request = net.receiveRequest()
+        if senderId and request then
+            print("[NET] Request from #" .. senderId .. ": " .. tostring(request.action))
+            handleNetworkRequest(senderId, request)
+        end
+    end
+end
+
+------------------------------------------------------------------------
+-- Redstone detection loop
+------------------------------------------------------------------------
 
 local function mainLoop()
     local tick_count = 0
@@ -164,6 +280,19 @@ local function init()
             sleep(2)
         end
     end
+
+    -- Open modem for Rednet
+    local modemSide = netprotocol.openModem()
+    if not modemSide then
+        print("WARNING: No modem found!")
+        print("  -> Terminal access will not work.")
+        print("  -> Attach a modem and reboot.")
+    else
+        net.host()
+        print(" -> Rednet hosted on: " .. modemSide)
+        print(" -> Protocol: " .. net.protocol)
+    end
+
     return true
 end
 
@@ -173,7 +302,8 @@ local function main()
         return
     end
 
-    mainLoop()
+    -- Run the redstone detection loop and network listener in parallel
+    parallel.waitForAll(mainLoop, networkLoop)
 end
 
 -- Verify this is a command computer
