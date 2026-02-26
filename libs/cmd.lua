@@ -4,9 +4,48 @@
 local updater = require("libs.updater")
 
 -- Version of the CMD library
-local version = "0.1.1"
+local version = "0.1.2"
 -- Maximum volume for a single /clone command in Minecraft
 local CLONE_LIMIT = 32768
+
+-- Forceload all chunks covering a block-coordinate region (min to max, X/Z only)
+-- Returns a list of {x, z} chunk coords that were forceloaded, for later removal
+local function forceloadRegion(minPos, maxPos)
+    local loaded = {}
+    -- Convert block coords to chunk coords (floor division by 16)
+    local chunkMinX = math.floor(minPos.x / 16)
+    local chunkMinZ = math.floor(minPos.z / 16)
+    local chunkMaxX = math.floor(maxPos.x / 16)
+    local chunkMaxZ = math.floor(maxPos.z / 16)
+    -- Ensure min <= max
+    if chunkMinX > chunkMaxX then chunkMinX, chunkMaxX = chunkMaxX, chunkMinX end
+    if chunkMinZ > chunkMaxZ then chunkMinZ, chunkMaxZ = chunkMaxZ, chunkMinZ end
+
+    for cx = chunkMinX, chunkMaxX do
+        for cz = chunkMinZ, chunkMaxZ do
+            -- forceload add uses block coordinates; any block inside the chunk works
+            local bx = cx * 16
+            local bz = cz * 16
+            local success, output = commands.exec(string.format("forceload add %d %d", bx, bz))
+            if success then
+                table.insert(loaded, {x = bx, z = bz})
+            else
+                print("Forceload add failed at chunk (" .. cx .. ", " .. cz .. "): " .. concatOutput(output))
+            end
+        end
+    end
+    return loaded
+end
+
+-- Remove forceload for a list of chunk positions returned by forceloadRegion
+local function forceloadRemove(loadedList)
+    for _, pos in ipairs(loadedList) do
+        local success, output = commands.exec(string.format("forceload remove %d %d", pos.x, pos.z))
+        if not success then
+            print("Forceload remove failed at (" .. pos.x .. ", " .. pos.z .. "): " .. concatOutput(output))
+        end
+    end
+end
 
 -- self update function
 local function update()
@@ -240,6 +279,15 @@ local function clone(source1, source2, target)
     local sizeX = srcMax.x - srcMin.x + 1
     local sizeY = srcMax.y - srcMin.y + 1
     local sizeZ = srcMax.z - srcMin.z + 1
+
+    -- Calculate target max corner
+    local tgtMin = {x = target.x, y = target.y, z = target.z}
+    local tgtMax = {x = target.x + sizeX - 1, y = target.y + sizeY - 1, z = target.z + sizeZ - 1}
+
+    -- Forceload source and target chunks
+    local srcLoaded = forceloadRegion(srcMin, srcMax)
+    local tgtLoaded = forceloadRegion(tgtMin, tgtMax)
+
     local volume = sizeX * sizeY * sizeZ
 
     -- If within the limit, do a single clone
@@ -254,6 +302,9 @@ local function clone(source1, source2, target)
         if not success then
             print("Clone command failed: " .. concatOutput(output))
         end
+        -- Remove forceloads
+        forceloadRemove(srcLoaded)
+        forceloadRemove(tgtLoaded)
         return success
     end
 
@@ -312,6 +363,9 @@ local function clone(source1, source2, target)
     end
 
     print("Clone completed in " .. chunkCount .. " chunks.")
+    -- Remove forceloads
+    forceloadRemove(srcLoaded)
+    forceloadRemove(tgtLoaded)
     return allSuccess
 end
 
@@ -419,6 +473,8 @@ return {
     clone = clone,
     fill = fill,
     setBlock = setBlock,
+    forceloadRegion = forceloadRegion,
+    forceloadRemove = forceloadRemove,
     
     -- Communication
     message = message,
