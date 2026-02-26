@@ -22,7 +22,7 @@ local config = {
             min = {x = 29999071, y = 304, z = 29999039},
             max = {x = 29999024, y = 319, z = 29998992},
             -- Relative offset from the area min corner to the terminal computer block
-            computerOffset = {x = 24, y = 13, z = 24}
+            computerOffset = {x = -31, y = 3, z = -23} -- 29999040,307,29999016
         },
         bottom = {
             label = "Bottom Cap",
