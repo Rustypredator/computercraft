@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the CMD library
-local version = "0.1.3"
+local version = "0.1.4"
 -- Maximum volume for a single /clone command in Minecraft
 local CLONE_LIMIT = 32768
 
@@ -16,41 +16,65 @@ local function concatOutput(output)
     return tostring(output or "")
 end
 
--- Forceload all chunks covering a block-coordinate region (min to max, X/Z only)
--- Returns a list of {x, z} chunk coords that were forceloaded, for later removal
-local function forceloadRegion(minPos, maxPos)
-    local loaded = {}
-    -- Convert block coords to chunk coords (floor division by 16)
-    local chunkMinX = math.floor(minPos.x / 16)
-    local chunkMinZ = math.floor(minPos.z / 16)
-    local chunkMaxX = math.floor(maxPos.x / 16)
-    local chunkMaxZ = math.floor(maxPos.z / 16)
-    -- Ensure min <= max
-    if chunkMinX > chunkMaxX then chunkMinX, chunkMaxX = chunkMaxX, chunkMinX end
-    if chunkMinZ > chunkMaxZ then chunkMinZ, chunkMaxZ = chunkMaxZ, chunkMinZ end
+-- Track currently forceloaded regions to avoid redundant load/unload cycles
+-- Each entry: { x1, z1, x2, z2, refCount }
+local activeForceloads = {}
 
-    for cx = chunkMinX, chunkMaxX do
-        for cz = chunkMinZ, chunkMaxZ do
-            -- forceload add uses block coordinates; any block inside the chunk works
-            local bx = cx * 16
-            local bz = cz * 16
-            local success, output = commands.exec(string.format("forceload add %d %d", bx, bz))
-            if success then
-                table.insert(loaded, {x = bx, z = bz})
-            else
-                print("Forceload add failed at chunk (" .. cx .. ", " .. cz .. "): " .. concatOutput(output))
-            end
+-- Forceload all chunks covering a block-coordinate region using range syntax.
+-- Uses reference counting so nested/overlapping calls don't unload prematurely.
+-- @param minPos {x, z} - one corner of the region
+-- @param maxPos {x, z} - opposite corner of the region
+-- @return table  a handle to pass to forceloadRemove()
+local function forceloadRegion(minPos, maxPos)
+    -- Normalize to min/max
+    local x1 = math.min(minPos.x, maxPos.x)
+    local z1 = math.min(minPos.z, maxPos.z)
+    local x2 = math.max(minPos.x, maxPos.x)
+    local z2 = math.max(minPos.z, maxPos.z)
+
+    -- Check if this exact region is already forceloaded
+    for _, entry in ipairs(activeForceloads) do
+        if entry.x1 == x1 and entry.z1 == z1 and entry.x2 == x2 and entry.z2 == z2 then
+            entry.refCount = entry.refCount + 1
+            return entry
         end
     end
-    return loaded
+
+    -- New region — single command with range syntax: forceload add <from_x> <from_z> <to_x> <to_z>
+    local success, output = commands.exec(string.format("forceload add %d %d %d %d", x1, z1, x2, z2))
+    if not success then
+        print("Forceload region failed: " .. concatOutput(output))
+    end
+
+    local entry = { x1 = x1, z1 = z1, x2 = x2, z2 = z2, refCount = 1, loaded = success }
+    table.insert(activeForceloads, entry)
+    return entry
 end
 
--- Remove forceload for a list of chunk positions returned by forceloadRegion
-local function forceloadRemove(loadedList)
-    for _, pos in ipairs(loadedList) do
-        local success, output = commands.exec(string.format("forceload remove %d %d", pos.x, pos.z))
+-- Remove forceload for a region handle returned by forceloadRegion.
+-- Only actually removes when the last reference is released.
+local function forceloadRemove(handle)
+    if not handle then return end
+
+    handle.refCount = handle.refCount - 1
+    if handle.refCount > 0 then
+        return  -- other operations still need these chunks
+    end
+
+    -- Actually remove the forceload
+    if handle.loaded then
+        local success, output = commands.exec(string.format(
+            "forceload remove %d %d %d %d", handle.x1, handle.z1, handle.x2, handle.z2))
         if not success then
-            print("Forceload remove failed at (" .. pos.x .. ", " .. pos.z .. "): " .. concatOutput(output))
+            print("Forceload remove failed: " .. concatOutput(output))
+        end
+    end
+
+    -- Remove from active list
+    for i, entry in ipairs(activeForceloads) do
+        if entry == handle then
+            table.remove(activeForceloads, i)
+            break
         end
     end
 end
