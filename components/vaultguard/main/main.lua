@@ -277,9 +277,9 @@ local function cloneTemplateToArea()
     local topTemplateMax = config.templates.top.max
     local topAreaPos = {x = Area.min.x, y = Area.max.y - 15, z = Area.min.z}  -- Top 16 blocks (1 chunk)
     
-    local success1 = cmd.clone(topTemplateMin, topTemplateMax, topAreaPos)
+    local topSuccess = cmd.clone(topTemplateMin, topTemplateMax, topAreaPos)
     
-    if not success1 then
+    if not topSuccess then
         print("Top template clone failed.")
         return false
     end
@@ -289,9 +289,9 @@ local function cloneTemplateToArea()
     local bottomTemplateMax = config.templates.bottom.max
     local bottomAreaPos = {x = Area.min.x, y = Area.min.y, z = Area.min.z}  -- Bottom 16 blocks (1 chunk)
     
-    local success2 = cmd.clone(bottomTemplateMin, bottomTemplateMax, bottomAreaPos)
+    local bottomSuccess = cmd.clone(bottomTemplateMin, bottomTemplateMax, bottomAreaPos)
     
-    if not success2 then
+    if not bottomSuccess then
         print("Bottom template clone failed.")
         return false
     end
@@ -339,6 +339,8 @@ local function mainLoop()
                     if assignedAreaId ~= nil then
                         -- player has an area.
                         print(player.name .. " already has an area assigned (ID: " .. assignedAreaId .. ").")
+                        -- Teleport the player to the area:
+                        teleportToArea(player)
                     else
                         -- player does not have an area.
                         print(player.name .. " is missing an area, assigning one...")
@@ -350,11 +352,14 @@ local function mainLoop()
                                 if Area.assign(player.uuid) == true then
                                     if Area.save() == true then
                                         print(player.name .. " has been assigned to area " .. Area.id)
-                                        cmd.message(player.name, "You have been assigned an Area, please press the button again.")
-                                        cloneSuccess, cloneOutput = cloneTemplateToArea()
+                                        cmd.message(player.name, "You have been assigned an Area. Cloning templates...")
+                                        local cloneSuccess = cloneTemplateToArea()
                                         if cloneSuccess == true then
-                                            Area.unload()
+                                            cmd.message(player.name, "Your area is ready! Teleporting you there now...")
+                                            -- Teleport the player to the area:
+                                            teleportToArea(player)
                                         end
+                                        Area.unload()
                                     else
                                         print("Failed to save the area data.")
                                     end
@@ -368,10 +373,10 @@ local function mainLoop()
                             print("Failed to load an unassigned area, are we maxxed?")
                         end
                     end
-                    -- Teleport the player to the area:
-                    teleportToArea(player)
+                    -- make sure to unload the area.
+                    Area.unload()
                 else
-                    print("Failed to get UUID for nearest player: " .. player.name)
+                    print("Failed to get UUID for nearest player: " .. nearestPlayerName)
                 end
             else
                 print("No players found nearby.")
