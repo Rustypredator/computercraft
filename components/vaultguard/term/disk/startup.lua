@@ -1,6 +1,11 @@
 -- VaultGuard Terminal Disk Bootstrapper
 -- Place this on a floppy disk in a disk drive adjacent to the terminal computer.
--- On first boot it downloads the terminal program & updater, then removes itself.
+-- On first boot it downloads the terminal program & updater to the computer.
+-- The script stays on the disk but skips itself on subsequent boots.
+--
+-- IMPORTANT: /clone copies disk NBT including the disk ID, so all cloned
+-- floppies share the same virtual filesystem. Do NOT delete this script
+-- or it will disappear for all cloned terminals.
 
 -- Skip if the computer already has a startup script installed
 if fs.exists("startup.lua") then
@@ -41,14 +46,6 @@ if updaterResponse then
 else
     print("[Bootstrap] WARNING: Failed to download updater library.")
     print("[Bootstrap] The terminal may fail on first boot.")
-end
-
--- Remove this bootstrap script from the disk so it doesn't run again
-print("[Bootstrap] Cleaning up bootstrap script...")
-local diskPath = shell.getRunningProgram()
-if fs.exists(diskPath) then
-    fs.delete(diskPath)
-    print("[Bootstrap] Bootstrap script removed from disk.")
 end
 
 print("[Bootstrap] Setup complete! Rebooting...")
