@@ -218,6 +218,10 @@ local function setPlayerHealth(player, health)
 end
 
 -- Clone region
+-- @param source1: {x, y, z} - first corner of the source region
+-- @param source2: {x, y, z} - opposite corner of the source region
+-- @param target: {x, y, z} - target position for the cloned region (the cloned region will be placed with its first corner at this position)
+-- @return success, output
 local function clone(source1, source2, target)
     local clone_cmd = string.format(
         "clone %d %d %d %d %d %d %d %d %d",
