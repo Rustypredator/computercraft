@@ -127,11 +127,13 @@ function Area.calculateCoordinates()
     Area.min = {x = x_start, y = config.assignArea.min.y, z = z_start}
     Area.max = {x = x_start + areaWidth - 1, y = config.assignArea.max.y, z = z_start + areaWidth - 1}
     
-    -- Calculate spawn position relative to area start + spawnOffset
+    -- Calculate spawn position: center of the topmost slice, offset from Area.max.y
+    -- The topmost slice spans from (Area.max.y - 15) to Area.max.y,
+    -- so its vertical center is Area.max.y - 7.
     Area.spawn = {
-        x = x_start + config.area.spawnOffset.x,
-        y = config.assignArea.min.y + config.area.spawnOffset.y,
-        z = z_start + config.area.spawnOffset.z
+        x = x_start + math.floor(areaWidth / 2) + config.area.spawnOffset.x,
+        y = config.assignArea.max.y - 8 + config.area.spawnOffset.y,
+        z = z_start + math.floor(areaWidth / 2) + config.area.spawnOffset.z
     }
 end
 
