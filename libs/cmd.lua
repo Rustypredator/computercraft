@@ -129,13 +129,17 @@ end
 local function getNearestPlayerName(message)
     local success, output = commands.exec("tell @p " .. (message or "dont mind me :)"))
     if success and output and #output > 0 then
-        local name = output[1]:match("You whisper to ([^ ]+):")
-        name = tostring(name)
-        if name and #name > 0 then
-            return name
-        else
-            return "unknown"
+        local raw = output[1]:match("You whisper to (.+):")
+        if raw then
+            -- Minecraft usernames are 3-16 characters: letters, digits, underscores only.
+            -- Strip any server tags/decorations (e.g. "[Builder]", "[Admin] ", prefixes)
+            -- by finding the valid username token in the captured text.
+            local name = raw:match("[%w_]+$")
+            if name and #name >= 3 and #name <= 16 then
+                return name
+            end
         end
+        return "unknown"
     end
 end
 
