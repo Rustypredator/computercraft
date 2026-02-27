@@ -126,23 +126,6 @@ local function uuidFromIntArray(a0, a1, a2, a3)
     )
 end
 
-local function getNearestPlayerName(message)
-    local success, output = commands.exec("tell @p " .. (message or "dont mind me :)"))
-    if success and output and #output > 0 then
-        local raw = output[1]:match("You whisper to (.+):")
-        if raw then
-            -- Minecraft usernames are 3-16 characters: letters, digits, underscores only.
-            -- Strip any server tags/decorations (e.g. "[Builder]", "[Admin] ", prefixes)
-            -- by finding the valid username token in the captured text.
-            local name = raw:match("[%w_]+$")
-            if name and #name >= 3 and #name <= 16 then
-                return name
-            end
-        end
-        return "unknown"
-    end
-end
-
 -- Get nearest player UUID
 local function getNearestPlayerUUID()
     local success, output = commands.exec("data get entity @p UUID")
@@ -189,6 +172,35 @@ local function getAllPlayerUUIDs()
     end
 
     return players
+end
+
+local function getNearestPlayerName(message)
+    -- Primary method: get the nearest player's UUID (stable via /data), then
+    -- resolve it to a name via /list uuids. This avoids server chat decorations.
+    local uuid = getNearestPlayerUUID()
+    if uuid then
+        local players = getAllPlayerUUIDs()
+        for _, p in ipairs(players) do
+            if p.uuid == uuid then
+                return p.name
+            end
+        end
+    end
+
+    -- Fallback: use /tell and strip any server tags/decorations
+    local success, output = commands.exec("tell @p " .. (message or "dont mind me :)"))
+    if success and output and #output > 0 then
+        local raw = output[1]:match("You whisper to (.+):")
+        if raw then
+            -- Minecraft usernames are 3-16 characters: letters, digits, underscores only.
+            local name = raw:match("[%w_]+$")
+            if name and #name >= 3 and #name <= 16 then
+                return name
+            end
+        end
+    end
+
+    return "unknown"
 end
 
 -- Get list of all online players
