@@ -44,6 +44,42 @@ local function forceloadRegion(minPos, maxPos)
     local success, output = commands.exec(string.format("forceload add %d %d %d %d", x1, z1, x2, z2))
     if not success then
         print("Forceload region failed: " .. concatOutput(output))
+    else
+        -- Wait for chunks to load and generate.
+        -- For never-visited areas, chunks must be generated which can take several ticks.
+        local outputStr = concatOutput(output)
+        if outputStr:find("already") then
+            -- Chunks were already force-loaded, just need a tick to sync
+            sleep(0.1)
+        else
+            -- Newly force-loaded chunks — wait for generation, then verify
+            sleep(0.5)
+            -- Probe the four corners of the region to confirm chunks are accessible.
+            -- 'fill ... air keep' is a no-op that requires loaded chunks to succeed.
+            local corners = {
+                {x = x1, z = z1},
+                {x = x1, z = z2},
+                {x = x2, z = z1},
+                {x = x2, z = z2},
+            }
+            local allReady = false
+            for attempt = 1, 20 do
+                allReady = true
+                for _, c in ipairs(corners) do
+                    local ok = commands.exec(string.format(
+                        "fill %d 0 %d %d 0 %d air keep", c.x, c.z, c.x, c.z))
+                    if not ok then
+                        allReady = false
+                        break
+                    end
+                end
+                if allReady then break end
+                sleep(0.5)
+            end
+            if not allReady then
+                print("Warning: Some chunks may not be fully generated after waiting.")
+            end
+        end
     end
 
     local entry = { x1 = x1, z1 = z1, x2 = x2, z2 = z2, refCount = 1, loaded = success }
@@ -373,7 +409,15 @@ local function clone(source1, source2, target, cloneMode)
         ) .. modeSuffix
         local success, output = commands.exec(clone_cmd)
         if not success then
-            print("Clone command failed: " .. concatOutput(output))
+            -- Retry — chunks may still be generating
+            for retry = 1, 3 do
+                sleep(1)
+                success, output = commands.exec(clone_cmd)
+                if success then break end
+            end
+            if not success then
+                print("Clone command failed: " .. concatOutput(output))
+            end
         end
         -- Remove forceloads
         forceloadRemove(srcLoaded)
@@ -381,23 +425,54 @@ local function clone(source1, source2, target, cloneMode)
         return success
     end
 
-    -- Volume exceeds limit — split into chunks that fit.
-    -- Reduce chunk sizes along X, then Z, then Y until each chunk is within the limit.
-    local chunkX = sizeX
-    local chunkY = sizeY
-    local chunkZ = sizeZ
+    -- Volume exceeds limit — find optimal chunk sizes to minimize total number of splits.
+    -- Strategy: try reducing a single axis (pick the one giving fewest total chunks),
+    -- then fall back to balanced halving if single-axis reduction is not sufficient.
+    local chunkX, chunkY, chunkZ = sizeX, sizeY, sizeZ
 
-    if chunkX * chunkY * chunkZ > CLONE_LIMIT then
-        chunkX = math.floor(CLONE_LIMIT / (chunkY * chunkZ))
-        if chunkX < 1 then chunkX = 1 end
+    local bestTotal = math.huge
+    local bestCX, bestCY, bestCZ = 1, 1, 1
+
+    -- Try reducing each single axis and pick the option with the fewest chunk count
+    local axes = {
+        {other1 = sizeY, other2 = sizeZ, full = sizeX, axis = "x"},
+        {other1 = sizeX, other2 = sizeZ, full = sizeY, axis = "y"},
+        {other1 = sizeX, other2 = sizeY, full = sizeZ, axis = "z"},
+    }
+    for _, opt in ipairs(axes) do
+        local otherProduct = opt.other1 * opt.other2
+        if otherProduct > 0 and otherProduct <= CLONE_LIMIT then
+            local cs = math.floor(CLONE_LIMIT / otherProduct)
+            if cs > opt.full then cs = opt.full end
+            if cs >= 1 then
+                local total = math.ceil(opt.full / cs)
+                if total < bestTotal then
+                    bestTotal = total
+                    if opt.axis == "x" then
+                        bestCX, bestCY, bestCZ = cs, sizeY, sizeZ
+                    elseif opt.axis == "y" then
+                        bestCX, bestCY, bestCZ = sizeX, cs, sizeZ
+                    else
+                        bestCX, bestCY, bestCZ = sizeX, sizeY, cs
+                    end
+                end
+            end
+        end
     end
-    if chunkX * chunkY * chunkZ > CLONE_LIMIT then
-        chunkZ = math.floor(CLONE_LIMIT / (chunkX * chunkY))
-        if chunkZ < 1 then chunkZ = 1 end
-    end
-    if chunkX * chunkY * chunkZ > CLONE_LIMIT then
-        chunkY = math.floor(CLONE_LIMIT / (chunkX * chunkZ))
-        if chunkY < 1 then chunkY = 1 end
+
+    if bestTotal < math.huge then
+        chunkX, chunkY, chunkZ = bestCX, bestCY, bestCZ
+    else
+        -- Single-axis reduction insufficient — halve the largest dimension repeatedly
+        while chunkX * chunkY * chunkZ > CLONE_LIMIT do
+            if chunkX >= chunkY and chunkX >= chunkZ then
+                chunkX = math.ceil(chunkX / 2)
+            elseif chunkY >= chunkZ then
+                chunkY = math.ceil(chunkY / 2)
+            else
+                chunkZ = math.ceil(chunkZ / 2)
+            end
+        end
     end
 
     local allSuccess = true
@@ -426,6 +501,14 @@ local function clone(source1, source2, target, cloneMode)
                     tx, ty, tz
                 ) .. modeSuffix
                 local success, output = commands.exec(clone_cmd)
+                if not success then
+                    -- Retry — chunks may still be generating
+                    for retry = 1, 3 do
+                        sleep(1)
+                        success, output = commands.exec(clone_cmd)
+                        if success then break end
+                    end
+                end
                 chunkCount = chunkCount + 1
                 if not success then
                     print("Clone chunk " .. chunkCount .. " failed: " .. concatOutput(output))

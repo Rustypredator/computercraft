@@ -295,6 +295,40 @@ function Area.getTerminalComputerPos()
 end
 
 ------------------------------------------------------------------------
+-- Template validation
+------------------------------------------------------------------------
+
+-- Validate that a template's coordinates match the expected dimensions from config.
+-- @param templateKey: string key in config.templates
+-- @return success boolean, error message or nil
+function Area.validateTemplateDimensions(templateKey)
+    local template = config.templates[templateKey]
+    if not template then
+        return false, "Unknown template: " .. tostring(templateKey)
+    end
+    if not template.min or not template.max then
+        return false, "Template '" .. templateKey .. "' is missing min/max coordinates."
+    end
+
+    local dimX = math.abs(template.max.x - template.min.x) + 1
+    local dimY = math.abs(template.max.y - template.min.y) + 1
+    local dimZ = math.abs(template.max.z - template.min.z) + 1
+
+    local expected = config.templateDimensions
+    if not expected then
+        return false, "No templateDimensions defined in config."
+    end
+
+    if dimX ~= expected.x or dimY ~= expected.y or dimZ ~= expected.z then
+        return false, string.format(
+            "Template '%s' dimensions %dx%dx%d do not match expected %dx%dx%d",
+            templateKey, dimX, dimY, dimZ, expected.x, expected.y, expected.z
+        )
+    end
+    return true, nil
+end
+
+------------------------------------------------------------------------
 -- Template cloning
 ------------------------------------------------------------------------
 
@@ -308,6 +342,14 @@ function Area.cloneTemplateToSlice(sliceIndex, templateKey)
         print("Unknown template: " .. tostring(templateKey))
         return false
     end
+
+    -- Validate template dimensions before cloning
+    local valid, err = Area.validateTemplateDimensions(templateKey)
+    if not valid then
+        print("Template dimension check failed: " .. err)
+        return false
+    end
+
     local slice = Area.slices[sliceIndex]
     if not slice then
         print("Invalid slice index: " .. tostring(sliceIndex))
@@ -318,8 +360,9 @@ function Area.cloneTemplateToSlice(sliceIndex, templateKey)
     if not success then
         print("Clone of '" .. templateKey .. "' to slice " .. sliceIndex .. " (Y " .. slice.yMin .. "-" .. slice.yMax .. ") failed.")
     else
-        -- Record which template was placed in this slice
+        -- Record which template was placed in this slice and persist
         slice.templateKey = templateKey
+        Area.save()
         print("Cloned '" .. templateKey .. "' to slice " .. sliceIndex .. " (Y " .. slice.yMin .. "-" .. slice.yMax .. ").")
     end
     return success
@@ -376,6 +419,14 @@ function Area.shiftDownAndInsert(fromTopIndex, templateKey)
         return false
     end
 
+    -- Shift templateKey metadata to match the block data that moved down.
+    -- Blocks from slices 2..targetSlice moved to slices 1..(targetSlice-1).
+    for i = 1, targetSlice - 1 do
+        Area.slices[i].templateKey = Area.slices[i + 1].templateKey
+    end
+    -- Clear the target slot's metadata (will be set by cloneTemplateToSlice below)
+    Area.slices[targetSlice].templateKey = nil
+
     -- Clone the template into the freed slot
     success = Area.cloneTemplateToSlice(targetSlice, templateKey)
     if not success then
@@ -410,6 +461,7 @@ return {
     -- Terminal
     getTerminalComputerPos = Area.getTerminalComputerPos,
     -- Templates
+    validateTemplateDimensions = Area.validateTemplateDimensions,
     cloneTemplateToSlice = Area.cloneTemplateToSlice,
     moveSliceDown = Area.moveSliceDown,
     shiftDownAndInsert = Area.shiftDownAndInsert,
