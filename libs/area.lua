@@ -19,24 +19,25 @@ local config = {
         top = {
             label = "Top Cap",
             cost = 0,
-            min = {x = 29999953, y = 304, z = 29999953},
-            max = {x = 29999000, y = 319, z = 29999000},
+            min = {x = 29999000, y = 304, z = 29999000},
+            max = {x = 29998953, y = 319, z = 29998953},
             -- Relative offset from the area min corner to the terminal computer block
-            computerOffset = {x = -31, y = 3, z = -23} -- 29999040,307,29999016
+            computerOffset = {x = -31, y = 3, z = -23}
         },
         bottom = {
             label = "Bottom Cap",
             cost = 0,
-            min = {x = 29999953, y = 304, z = 29998953},
+            min = {x = 29998953, y = 304, z = 29998905},
             max = {x = 29999000, y = 319, z = 29998952}
         },
         cross = {
             label = "Crossroads",
             cost = 5,
-            min = {x = 29998905, y = 304, z = 29998953},
-            max = {x = 29998952, y = 319, z = 29999000}
+            min = {x = 29998952, y = 304, z = 29999000},
+            max = {x = 29998905, y = 319, z = 29998953}
         }
     },
+    templateDimensions = {x = 48, y = 16, z = 48},
     availableTemplates = {"cross"},
     currencyItem = "minecraft:diamond",
     area = {
