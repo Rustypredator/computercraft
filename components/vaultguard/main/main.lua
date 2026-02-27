@@ -32,7 +32,7 @@ local net = netprotocol.create({
 
 local config = {
     checkInterval = 100,
-    redstoneInputSide = "top",
+    redstoneInputSide = "back",
 }
 
 -- Self Update function

@@ -19,22 +19,22 @@ local config = {
         top = {
             label = "Top Cap",
             cost = 0,
-            min = {x = 29999071, y = 304, z = 29999039},
-            max = {x = 29999024, y = 319, z = 29998992},
+            min = {x = 29999953, y = 304, z = 29999953},
+            max = {x = 29999000, y = 319, z = 29999000},
             -- Relative offset from the area min corner to the terminal computer block
             computerOffset = {x = -31, y = 3, z = -23} -- 29999040,307,29999016
         },
         bottom = {
             label = "Bottom Cap",
             cost = 0,
-            min = {x = 29999071, y = 304, z = 29998991},
-            max = {x = 29999024, y = 319, z = 29998944}
+            min = {x = 29999953, y = 304, z = 29998953},
+            max = {x = 29999000, y = 319, z = 29998952}
         },
         cross = {
             label = "Crossroads",
             cost = 5,
-            min = {x = 29999023, y = 304, z = 29998039},
-            max = {x = 29998976, y = 319, z = 29998992}
+            min = {x = 29998905, y = 304, z = 29998953},
+            max = {x = 29998952, y = 319, z = 29999000}
         }
     },
     availableTemplates = {"cross"},
@@ -45,8 +45,8 @@ local config = {
         spawnOffset = {x = 0, y = 0, z = 0},
     },
     assignArea = {
-        min = {x = -28800000, y = -64, z = -28800000},
-        max = {x = 28800000, y = 319, z = 28800000}
+        min = {x = -29999000, y = -64, z = -29999000},
+        max = {x = -10000000, y = 319, z = -10000000}
     },
     areaStorageFolder = "data/areas/",
     areaPlayerMapFile = "data/areaPlayerMap.txt"
