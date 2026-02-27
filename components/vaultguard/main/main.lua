@@ -236,7 +236,7 @@ local function mainLoop()
             print("[REDSTONE] Signal detected!")
             -- get nearest player
             local nearestPlayerName = cmd.getNearestPlayerName()
-            local nearestPlayerUuid = cmd.getNearestPlayerUuid()
+            local nearestPlayerUuid = cmd.getNearestPlayerUUID()
             if nearestPlayerName then
                 -- Check if the player already has an area assigned, if not assign one:
                 if nearestPlayerUuid then
