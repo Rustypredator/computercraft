@@ -6,6 +6,7 @@ print("VaultGuard Setup Script")
 print("Select what component you are installing:")
 print("1. VaultGuard")
 print("2. Shooting Range")
+print("3. Utilities")
 
 local choice = io.read()
 local url = ""
@@ -37,6 +38,17 @@ elseif choice == "2" then
         url = baseurl .. "/components/shootingrange/target/main.lua"
     elseif subChoice == "3" then
         url = baseurl .. "/components/shootingrange/rangeselector/main.lua"
+    else
+        print("Invalid choice. Exiting setup.")
+        os.exit(1)
+    end
+elseif choice == "3" then
+    -- submenu for Utilities
+    print("Select Utility:")
+    print("1. Lootbox Finder")
+    local subChoice = io.read()
+    if subChoice == "1" then
+        url = baseurl .. "/components/utils/lootbox_finder/main.lua"
     else
         print("Invalid choice. Exiting setup.")
         os.exit(1)
