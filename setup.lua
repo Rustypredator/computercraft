@@ -46,9 +46,12 @@ elseif choice == "3" then
     -- submenu for Utilities
     print("Select Utility:")
     print("1. Lootbox Finder")
+    print("2. Chunkloader")
     local subChoice = io.read()
     if subChoice == "1" then
         url = baseurl .. "/components/utils/lootbox_finder/main.lua"
+    elseif subChoice == "2" then
+        url = baseurl .. "/components/utils/chunkloader/main.lua"
     else
         print("Invalid choice. Exiting setup.")
         os.exit(1)
