@@ -710,6 +710,7 @@ return {
     clone = clone,
     fill = fill,
     setBlock = setBlock,
+    forceLoadChunkRegion = forceLoadChunkRegion,
     forceloadRegion = forceloadRegion,
     forceloadRemove = forceloadRemove,
     
