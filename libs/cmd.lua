@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the CMD library
-local version = "0.1.6"
+local version = "0.1.7"
 -- Maximum volume for a single /clone command in Minecraft
 local CLONE_LIMIT = 32768
 
@@ -85,6 +85,18 @@ local function forceloadRegion(minPos, maxPos)
     local entry = { x1 = x1, z1 = z1, x2 = x2, z2 = z2, refCount = 1, loaded = success }
     table.insert(activeForceloads, entry)
     return entry
+end
+
+-- Forceload all chunks covering a chunk-coordinate region defined by two opposite corners.
+-- @param minChunk {x, z} - one corner of the region in chunk coordinates
+-- @param maxChunk {x, z} - opposite corner of the region in chunk coordinates
+-- @return table  a handle to pass to forceloadRemove()
+local function forceLoadChunkRegion(minChunk, maxChunk)
+    -- convert to block coordinates and call forceloadRegion.
+    -- Each chunk is 16x16 blocks, so multiply by 16. The forceload command is inclusive, so we need to add 15 to the max corner.
+    local minPos = {x = minChunk.x * 16, z = minChunk.z * 16}
+    local maxPos = {x = maxChunk.x * 16 + 15, z = maxChunk.z * 16 + 15}
+    return forceloadRegion(minPos, maxPos)
 end
 
 -- Remove forceload for a region handle returned by forceloadRegion.
