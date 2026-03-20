@@ -12,8 +12,8 @@ local version = "0.0.1"
 
 --- Self Update function
 local function updateSelf()
-    local updateUrl = "/components/templates/main/main.lua"
-    local versionUrl = "/components/templates/main/main.ver"
+    local updateUrl = "/components/category/name/main.lua"
+    local versionUrl = "/components/category/name/main.ver"
     return updater.update(version, updateUrl, versionUrl, "startup.lua")
 end
 
