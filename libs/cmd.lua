@@ -4,7 +4,7 @@
 local updater = require("libs.updater")
 
 -- Version of the CMD library
-local version = "0.1.7"
+local version = "0.1.8"
 -- Maximum volume for a single /clone command in Minecraft
 local CLONE_LIMIT = 32768
 
@@ -22,6 +22,7 @@ local activeForceloads = {}
 
 -- Forceload all chunks covering a block-coordinate region using range syntax.
 -- Uses reference counting so nested/overlapping calls don't unload prematurely.
+-- If the region exceeds 256 chunks, it is split recursively.
 -- @param minPos {x, z} - one corner of the region
 -- @param maxPos {x, z} - opposite corner of the region
 -- @return table  a handle to pass to forceloadRemove()
@@ -31,6 +32,39 @@ local function forceloadRegion(minPos, maxPos)
     local z1 = math.min(minPos.z, maxPos.z)
     local x2 = math.max(minPos.x, maxPos.x)
     local z2 = math.max(minPos.z, maxPos.z)
+
+    -- Calculate chunk dimensions (each chunk is 16x16 blocks)
+    local chunkCountX = math.floor((x2 - x1) / 16) + 1
+    local chunkCountZ = math.floor((z2 - z1) / 16) + 1
+    local totalChunks = chunkCountX * chunkCountZ
+
+    -- If region exceeds 256 chunks, split it recursively
+    if totalChunks > 256 then
+        local subHandles = {}
+        
+        -- Split along the longest dimension
+        if chunkCountX >= chunkCountZ then
+            -- Split along X axis
+            local midX = x1 + math.floor((x2 - x1) / 2)
+            table.insert(subHandles, forceloadRegion({x = x1, z = z1}, {x = midX, z = z2}))
+            table.insert(subHandles, forceloadRegion({x = midX + 1, z = z1}, {x = x2, z = z2}))
+        else
+            -- Split along Z axis
+            local midZ = z1 + math.floor((z2 - z1) / 2)
+            table.insert(subHandles, forceloadRegion({x = x1, z = z1}, {x = x2, z = midZ}))
+            table.insert(subHandles, forceloadRegion({x = x1, z = midZ + 1}, {x = x2, z = z2}))
+        end
+        
+        -- Create composite handle that tracks all sub-handles
+        local handle = {
+            x1 = x1, z1 = z1, x2 = x2, z2 = z2,
+            refCount = 1,
+            subHandles = subHandles,
+            isComposite = true
+        }
+        table.insert(activeForceloads, handle)
+        return handle
+    end
 
     -- Check if this exact region is already forceloaded
     for _, entry in ipairs(activeForceloads) do
@@ -109,12 +143,19 @@ local function forceloadRemove(handle)
         return  -- other operations still need these chunks
     end
 
-    -- Actually remove the forceload
-    if handle.loaded then
-        local success, output = commands.exec(string.format(
-            "forceload remove %d %d %d %d", handle.x1, handle.z1, handle.x2, handle.z2))
-        if not success then
-            print("Forceload remove failed: " .. concatOutput(output))
+    -- If this is a composite handle, recursively remove sub-handles
+    if handle.isComposite then
+        for _, subHandle in ipairs(handle.subHandles) do
+            forceloadRemove(subHandle)
+        end
+    else
+        -- Actually remove the forceload
+        if handle.loaded then
+            local success, output = commands.exec(string.format(
+                "forceload remove %d %d %d %d", handle.x1, handle.z1, handle.x2, handle.z2))
+            if not success then
+                print("Forceload remove failed: " .. concatOutput(output))
+            end
         end
     end
 
