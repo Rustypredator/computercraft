@@ -8,7 +8,7 @@ updater.updateLib("cmd")
 -- require the libraries
 local cmd = require("libs.cmd")
 
-local version = "0.0.1"
+local version = "0.0.2"
 
 --- Self Update function
 local function updateSelf()
@@ -140,10 +140,12 @@ local function main()
     
     local dimensions = getCoordinates()
     if not dimensions then
+        print("Failed to get valid dimensions. Exiting.")
         return
     end
     
     -- use dimensions to load chunks here
+    print("Loading chunks in region defined by:")
     cmd.forceLoadChunkRegion(dimensions[1], dimensions[2])
     
     print("\nPress ENTER to exit.")
