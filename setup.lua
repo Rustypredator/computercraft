@@ -7,6 +7,7 @@ print("Select what component you are installing:")
 print("1. VaultGuard")
 print("2. Shooting Range")
 print("3. Utilities")
+print("4. Gas Station")
 
 local choice = io.read()
 local url = ""
@@ -56,6 +57,9 @@ elseif choice == "3" then
         print("Invalid choice. Exiting setup.")
         os.exit(1)
     end
+elseif choice == "4" then
+    -- Gas Station
+    url = baseurl .. "/components/gasstation/main/main.lua"
 else
     print("Invalid choice. Exiting setup.")
     os.exit(1)
