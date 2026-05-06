@@ -1,6 +1,6 @@
 
 local baseUrl = "https://raw.githubusercontent.com/Rustypredator/computercraft/refs/heads/main"
-local version = "0.0.6"
+local version = "0.0.7"
 
 -- Update function to check for updates and download the latest version
 -- @param currentVersion The current version of the script
@@ -19,7 +19,7 @@ local function update(currentVersion, url, versionUrl, filePath)
         return -1
     end
     
-    local latestVersion = response.readAll()
+    local latestVersion = response.readAll():gsub("%s+$", "")
     response.close()
     -- compare the latest version with the current version
     if latestVersion ~= currentVersion then
