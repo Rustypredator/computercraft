@@ -4,11 +4,12 @@
 local updater = require("libs.updater")
 updater.updateSelf()
 updater.updateLib("menu")
+updater.updateLib("ui")
 
 -- require the libraries
 local menu = require("libs.menu")
 
-local version = "0.0.1"
+local version = "0.0.2"
 
 -- Config file paths
 local TANKS_CONFIG  = "gasstation_tanks.json"
